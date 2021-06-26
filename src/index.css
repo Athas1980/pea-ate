@@ -1,0 +1,61 @@
+@font-face {
+  font-family: 'pix';
+  src: url(fonts/slkscr.ttf);
+}
+/* @font-face {
+  font-family: "Open Sans";
+  src: url(./fonts/slkscr.ttf) format("truetype");
+} */
+
+body {
+  font-family: pix;
+  font-smooth: never;
+  margin: auto;
+  max-width: 38rem;
+  padding: 2rem;
+  background-color: black;
+  color: #FFF1E8;
+
+}
+
+canvas {
+  border:1px solid black;
+  image-rendering: pixelated;
+}
+
+#paletteBox{
+  width: 8rem;
+  height: 8rem;
+  display:grid;
+  grid-template-columns: 25% 25% 25% 25% ;
+  grid-template-rows: 25% 25% 25% 25% ;
+}
+
+.palletePreview{
+  color:darkgray;
+  display:flex;
+  line-height: 100%;
+  justify-content: center;
+  align-items: center;
+  mix-blend-mode: difference;
+  margin: 2px;
+}
+
+
+
+.palette0 {background-color: #000000;}
+.palette1 {background-color: #1D2B53;}
+.palette2 {background-color: #7E2553;}
+.palette3 {background-color: #008751;}
+.palette4 {background-color: #AB5236;}
+.palette5 {background-color: #5F574F;}
+.palette6 {background-color: #C2C3C7;}
+.palette7 {background-color: #FFF1E8;}
+.palette8 {background-color: #FF004D;}
+.palette9 {background-color: #FFA300;}
+.palette10{background-color: #FFEC27;}
+.palette11{background-color: #00E436;}
+.palette12{background-color: #29ADFF;}
+.palette13{background-color: #83769C;}
+.palette14{background-color: #FF77A8;}
+.palette15{background-color: #FFCCAA;}
