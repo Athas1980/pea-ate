@@ -1,5 +1,6 @@
 import React, { createRef, FC, RefObject, useEffect } from 'react';
 import {Component, useRef} from 'react';
+import {ipcRenderer} from 'electron'
 
 type PixViewProps = {
     // using `interface` is also ok
@@ -24,16 +25,17 @@ type PixViewProps = {
   }
 
     useEffect( () => {
-      if (ref.current) {
+      if (ref.current && data) {
         console.log("setting pixel data")
         
         const ctx = ref.current.getContext("2d")
+        console.log(ctx)
         const imageData = ctx.getImageData(0,0,ref.current.width, ref.current.height)
+        console.log(imageData)
         const byteData = imageData.data;
+        console.log(byteData.length)
         for (var i = 0; i < byteData.length; i += 4) {
-            
             const colour = paletteLookup(data[i/4])
-            console.log(i)
             byteData[i]     = colour.r   // red
             byteData[i + 1] = colour.g // green
             byteData[i + 2] = colour.b; // blue
@@ -64,4 +66,42 @@ type PixViewProps = {
     }
   }
 
-  export default PixView
+  type ZoomablePixViewState = {
+    zoom:number
+  }
+  
+  type ZoomablePixViewProperties = {
+    width: number;
+    height: number;
+    palette: Array<string>;
+    data: Uint8Array;
+  }
+
+  class ZoomablePixView extends Component<ZoomablePixViewProperties, ZoomablePixViewState> {
+
+    constructor(props: ZoomablePixViewProperties) {
+      super(props)
+      this.state = {zoom: 2} 
+    }
+
+    zoomIn() {
+      this.setState( {zoom: this.state.zoom + 1})
+    }
+
+    zoomOut() {
+      if (this.state.zoom > 1) {
+        this.setState({zoom: this.state.zoom -1})
+      }
+    }
+
+    render() {
+      return <div className="zoomablePixView">
+        <button className="btnZoomIn" onClick={this.zoomIn}>+</button>
+        <button className="btnZoomOut" onClick={this.zoomOut} disabled={this.state.zoom <=1}>-</button>
+        <PixView data={this.props.data} height={this.props.height} width={this.props.width} palette={this.props.palette} zoom={this.state.zoom}></PixView>
+      </div>
+    }
+
+  }
+
+  export default ZoomablePixView

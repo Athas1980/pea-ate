@@ -1,23 +1,29 @@
 import * as React from 'react';
-import PixView from './PixView';
-import {Component, createRef, useRef} from 'react';
-// import PixView from './PixView';
+import {useEffect, useState} from 'react';
+import ZoomablePixView from './PixView';
 import { hot } from 'react-hot-loader';
 import { default_pallete_hex } from './Palettes';
-import fs from 'fs'
+import { ipcRenderer } from 'electron';
 
 const App = () => {
-
-  const fs = require('fs')
+  const [initialized, setInitialized] = useState(false)
 
   const [palette, setPalette]  = React.useState(default_pallete_hex)
   const [spriteSheet, setSpriteSheet] = React.useState(new Uint8Array())
+
+  useEffect(() => {
+    if (!initialized) {
+      new P8FileReader(null, spiteCallBack).read()
+      setInitialized(true)
+    }
+  })
+
+
   function spiteCallBack(data: Uint8Array) {
+    console.log("recieved data", data)
     setSpriteSheet(data)
   }
-  new P8FileReader("carts/demo.p8", spiteCallBack).read(){
-
-  }
+  
   return (
     <div>
         <div>No file currently loaded using example data.</div>
@@ -42,20 +48,23 @@ const App = () => {
             <div className="palletePreview palette15">15</div>
           </div>
         </div>
-        <PixView width={2} height={2} zoom={16} palette={palette} data={spriteSheet}></PixView>
+        <ZoomablePixView width={128} height={128} palette={palette} data={spriteSheet}></ZoomablePixView>
     </div>
   )}
 
   class P8FileReader{
     private fileName:string
     private spriteCallBack:(data:Uint8Array) => void
+
     constructor(fileName:string, spriteCallBack:(data:Uint8Array) => void) {
       this.fileName = fileName
       this.spriteCallBack = spriteCallBack
+      ipcRenderer.on("loadP8Reply", (e, data) => { console.log(data); spriteCallBack(data.sprites)})
     }
 
     read() {
-      fs.createReadStream(this.fileName)
+      ipcRenderer.send("loadP8")
+
     }
 
   }
