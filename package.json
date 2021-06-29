@@ -6,15 +6,15 @@
   "main": ".webpack/main",
   "build": {
     "extraResources": [
-        {
-            "from": "extraResources",
-            "to": "extraResources",
-            "filter": [
-                "**/*"
-            ]
-        }
+      {
+        "from": "extraResources",
+        "to": "extraResources",
+        "filter": [
+          "**/*"
+        ]
+      }
     ]
-},
+  },
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",

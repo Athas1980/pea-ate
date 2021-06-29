@@ -4,6 +4,7 @@ import ZoomablePixView from './PixView';
 import { hot } from 'react-hot-loader';
 import { default_pallete_hex, full_pallete_hex } from './Palettes';
 import { ipcRenderer } from 'electron';
+import logo from './resources/pea.png';
 
 const App = () => {
   const [initialized, setInitialized] = useState(false)
@@ -31,7 +32,7 @@ const App = () => {
   
   return (
     <div>
-      <div><img src="/resources/pea.png"></img></div>
+      <div><img src={logo}></img></div>
         <div className="info">
           <div className="fileInfo">
             <h1>File Info</h1>

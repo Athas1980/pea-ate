@@ -31,6 +31,10 @@ module.exports = [
   {
     test: /\.p8$/,
     type: 'asset/resource'
+  },
+  {
+    test: /\.png/,
+    type: 'asset/resource'
   }
 
 ];

@@ -15,12 +15,12 @@ body {
   padding: 2rem;
   background-color: black;
   color: #FFF1E8;
+  image-rendering: pixelated;
 
 }
 
 canvas {
   border:1px solid black;
-  image-rendering: pixelated;
 }
 
 h1 {
