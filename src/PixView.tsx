@@ -54,7 +54,7 @@ type PixViewProps = {
       return toRgba("000000")
     }
 
-    return (<canvas ref={ref} height={height} width={width} style={style}></canvas>)
+    return (<canvas ref={ref} height={height} width={width} style={style} className="pixView"></canvas>)
   }
 
   function toRgba(hex:string) {
@@ -82,10 +82,14 @@ type PixViewProps = {
     constructor(props: ZoomablePixViewProperties) {
       super(props)
       this.state = {zoom: 2} 
+
+      this.zoomIn = this.zoomIn.bind(this)
+      this.zoomOut = this.zoomOut.bind(this)
     }
 
     zoomIn() {
-      this.setState( {zoom: this.state.zoom + 1})
+      console.log("oom")
+      this.setState({zoom: this.state.zoom +1})
     }
 
     zoomOut() {
@@ -96,10 +100,14 @@ type PixViewProps = {
 
     render() {
       return <div className="zoomablePixView">
-        <button className="btnZoomIn" onClick={this.zoomIn}>+</button>
-        <button className="btnZoomOut" onClick={this.zoomOut} disabled={this.state.zoom <=1}>-</button>
+        <div>
+          <button className="btnZoomIn" onClick={this.zoomIn}>+</button>
+          <button className="btnZoomOut" onClick={this.zoomOut} disabled={this.state.zoom <=1}>-</button>
+        </div>
         <PixView data={this.props.data} height={this.props.height} width={this.props.width} palette={this.props.palette} zoom={this.state.zoom}></PixView>
+
       </div>
+
     }
 
   }

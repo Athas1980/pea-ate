@@ -35,3 +35,5 @@ export const full_pallete_hex = default_pallete_hex.concat( [
     "FF6E59",
     "FF9D81"
 ])
+
+console.log("full palette", full_pallete_hex.length, full_pallete_hex)

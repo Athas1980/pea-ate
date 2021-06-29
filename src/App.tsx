@@ -2,7 +2,7 @@ import * as React from 'react';
 import {useEffect, useState} from 'react';
 import ZoomablePixView from './PixView';
 import { hot } from 'react-hot-loader';
-import { default_pallete_hex } from './Palettes';
+import { default_pallete_hex, full_pallete_hex } from './Palettes';
 import { ipcRenderer } from 'electron';
 
 const App = () => {
@@ -18,39 +18,81 @@ const App = () => {
     }
   })
 
+  function handlePaletteChange(index:number, colour:string) {
+    const newPal = palette.slice()
+    newPal[index] = colour
+    setPalette(newPal)
+  }
+
 
   function spiteCallBack(data: Uint8Array) {
-    console.log("recieved data", data)
     setSpriteSheet(data)
   }
   
   return (
     <div>
-        <div>No file currently loaded using example data.</div>
-        <div>
-          <div>Current Palette</div>
-          <div id="paletteBox">
-            <div className="palletePreview palette0">0</div>
-            <div className="palletePreview palette1">1</div>
-            <div className="palletePreview palette2">2</div>
-            <div className="palletePreview palette3">3</div>
-            <div className="palletePreview palette4">4</div>
-            <div className="palletePreview palette5">5</div>
-            <div className="palletePreview palette6">6</div>
-            <div className="palletePreview palette7">7</div>
-            <div className="palletePreview palette8">8</div>
-            <div className="palletePreview palette9">9</div>
-            <div className="palletePreview palette10">10</div>
-            <div className="palletePreview palette11">11</div>
-            <div className="palletePreview palette12">12</div>
-            <div className="palletePreview palette13">13</div>
-            <div className="palletePreview palette14">14</div>
-            <div className="palletePreview palette15">15</div>
+      <div><img src="/resources/pea.png"></img></div>
+        <div className="info">
+          <div className="fileInfo">
+            <h1>File Info</h1>
+            <div>No file currently loaded using example data.</div>
+            <hr></hr>
+            <small>Top down tileset by krajeg</small>
+            <br />
+            <small><a href="https://www.lexaloffle.com/bbs/?pid=45481" target="_blank">https://www.lexaloffle.com/bbs/?pid=45481</a></small>
           </div>
+          <PaletteChooser current={palette} available={full_pallete_hex} handlePaletteChange={handlePaletteChange}></PaletteChooser>
         </div>
         <ZoomablePixView width={128} height={128} palette={palette} data={spriteSheet}></ZoomablePixView>
     </div>
   )}
+
+  const PaletteChooser = (props: {current: Array<string>, available: Array<string>, handlePaletteChange: (index:number, colour:string) => void}) => {
+    
+    const [selectedIndex, setSelectedIndex] = useState(null)
+
+    const PaletteItem = (colour:string, index:number) => {
+      const style={
+        backgroundColor : "#"+colour
+      }
+      return <div className="palletePreview" style={style} onClick={()=> setSelectedIndex(index)}>{index}</div>
+    }
+
+    const colourSelected = (index:number, colour:string) => {
+      props.handlePaletteChange(index, colour)
+      setSelectedIndex(null)
+    }
+
+    const ChooserItem = (colour:string, index:number) => {
+      const style={
+        backgroundColor : "#"+colour
+      }
+      return <div className="palletePreview" style={style} onClick={ ()=>colourSelected(index, colour) }></div>
+    }
+
+
+    const colours = props.current.map((e, i) => PaletteItem(e, i))
+    const available = props.available.map((e) => ChooserItem(e, selectedIndex))
+    let chooserBoxStyle:any = {backgroundColour:"#222222"}
+    if (selectedIndex) {
+      chooserBoxStyle = {
+        visibility: "visible",
+        height: "16rem"
+      }
+    }
+
+    return <div className="palleteBoxWrapper">
+    <h1>Current Palette {selectedIndex}</h1>
+    <div className="paletteBox">
+      {colours}
+    </div>
+    <div className="chooserBoxWrapper">
+      <div className="chooserBox" style={chooserBoxStyle}>
+        {available}
+      </div>
+    </div>
+  </div>
+  }
 
   class P8FileReader{
     private fileName:string

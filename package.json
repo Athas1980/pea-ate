@@ -1,8 +1,8 @@
 {
-  "name": "tile-edit",
-  "productName": "tile-edit",
+  "name": "Pea-Ate",
+  "productName": "Pea-Ate",
   "version": "1.0.0",
-  "description": "My Electron application description",
+  "description": "Editor for ",
   "main": ".webpack/main",
   "build": {
     "extraResources": [

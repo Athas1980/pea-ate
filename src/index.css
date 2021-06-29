@@ -23,12 +23,44 @@ canvas {
   image-rendering: pixelated;
 }
 
-#paletteBox{
+h1 {
+  margin:10px;
+  font-size: 1.5rem;
+  text-align:center;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+.paletteBox{
   width: 8rem;
   height: 8rem;
   display:grid;
   grid-template-columns: 25% 25% 25% 25% ;
   grid-template-rows: 25% 25% 25% 25% ;
+  margin:auto;
+  border: 1px solid grey;
+}
+
+.paletteBox > div:hover {
+  border:1px solid white;
+  color:black;
+}
+
+.info {
+  display: grid;
+  grid-template-columns: 50% 50%;
+}
+
+.pixView {
+  border: 2px solid white;
+  padding:2px;
+  transition: width 0.25s, height 0.25s;
+}
+
+.info > div {
+  border: 2px solid white;
+  margin: 2px;
+  padding: 0.25rem;
 }
 
 .palletePreview{
@@ -39,6 +71,33 @@ canvas {
   align-items: center;
   mix-blend-mode: difference;
   margin: 2px;
+}
+
+.chooserBoxWrapper{
+  width: 8rem;
+  margin:auto;
+  
+}
+.chooserBox{
+  margin-top:1rem;
+  width: 8rem;
+  height: 0;
+  overflow: hidden;
+  transition: height 0.25s;
+  visibility: hidden;
+  /* background-color: #c0c0c0; */
+  display:grid;
+  grid-template-columns: 25% 25% 25% 25% ;
+  border: 1px solid grey;
+  position: absolute;
+  background-color: #000000;
+}
+
+
+.chooserBox .palletePreview {
+  border:1px solid darkslategrey;
+  mix-blend-mode:normal;
+
 }
 
 
