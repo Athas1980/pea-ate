@@ -35,19 +35,28 @@ const MapView: FC<MapViewProps> = ({ width, height, zoom, data, spriteSheet, pal
   function updateMap() {
     if (ref && data && spriteCanvas) {
 
+      const id = new ImageData(8,8)
+      const spriteCtx = spriteCanvas.getContext("2d");
+      const mapCtx = ref.current.getContext("2d")
+      let perf =performance.now()
+      const sprites  = new ImageDataCache()
+
       for (let i = 0; i < data.length; i++) {
         const spriteNumber = data[i]
         if(spriteNumber == 0) continue
-        const spriteCtx = spriteCanvas.getContext("2d");
-        const spritesPerRow = spriteSheet.width / 8
-        const x = (spriteNumber % spritesPerRow) * 8;
-        const y = Math.floor(spriteNumber / spritesPerRow) * 8;
-        console.log("source x", x, "source y",y)
-        const spritePix = spriteCtx.getImageData(x, y, 8, 8)
 
-        const mapCtx = ref.current.getContext("2d")
-        mapCtx.putImageData(spritePix, (i % width) * 8, Math.floor(i / width) * 8)
+        const imageData  = sprites.getOrElse(spriteNumber, (spriteNumber:number) => {
+          const spritesPerRow = spriteSheet.width / 8
+          const x = (spriteNumber % spritesPerRow) * 8;
+          const y = Math.floor(spriteNumber / spritesPerRow) * 8;
+          return spriteCtx.getImageData(x, y, 8, 8)
+        })
+        
+        
+        mapCtx.putImageData(imageData, (i % width) * 8, Math.floor(i / width) * 8)
       }
+
+      console.log("rendering map took", performance.now() - perf)
     }
   }
 
@@ -86,6 +95,20 @@ function toRgba(hex: string) {
     "g": parseInt(hex.substring(2, 4), 16),
     "b": parseInt(hex.substring(4, 6), 16),
     "a": 255
+  }
+}
+
+class ImageDataCache {
+  private sprites :Array<ImageData> = []
+  
+  getOrElse(spriteNumber:number, func:(spriteNumber:Number) => ImageData) {
+    const existing = this.sprites[spriteNumber]
+    if (existing) {
+      return existing;
+    }
+    const calculated = func(spriteNumber)
+    this.sprites[spriteNumber] = calculated
+    return calculated
   }
 }
 
