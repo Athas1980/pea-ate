@@ -2,10 +2,7 @@
   font-family: 'pix';
   src: url(fonts/slkscr.ttf);
 }
-/* @font-face {
-  font-family: "Open Sans";
-  src: url(./fonts/slkscr.ttf) format("truetype");
-} */
+
 
 body {
   font-family: pix;

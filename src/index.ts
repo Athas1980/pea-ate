@@ -17,10 +17,10 @@ if (require('electron-squirrel-startup')) { // eslint-disable-line global-requir
 
 ipcMain.on('loadP8', (e, arg) => {
   console.log(demo)
-  const p = arg || './.webpack/main/'+demo
-  
+  const p = arg || './.webpack/main/' + demo
+
   const promise = loadData(p)
-  promise.then((c)=>e.reply('loadP8Reply', {sprites: c}))
+  promise.then((c) => e.reply('loadP8Reply', c))
 
   // promise.then((value) => {
   //   console.log("blahblahblah", value),
@@ -29,7 +29,7 @@ ipcMain.on('loadP8', (e, arg) => {
   // })
 })
 
-async function loadData(path:string) {
+async function loadData(path: string) {
 
   const stream = fs.createReadStream(path)
   const rl = readline.createInterface({
@@ -37,26 +37,53 @@ async function loadData(path:string) {
     crlfDelay: Infinity
   });
 
-  const arr = new Array()
-  let dataType = ''
+  const spritesArr = new Array()
+  const mapArr = new Array()
+  const labelArr = new Array()
+  enum Block { unknown, sprite, map, label }
+  let dataType: Block = Block.unknown
   for await (const line of rl) {
     // Each line in input.txt will be successively available here as `line`.
-    
-    if (dataType == "sprite" && !line.startsWith("__") && line.length>0) {
-        for (let i=0; i<line.length; i++) {
-        arr.push(parseInt(line[i], 16))
+
+    if (dataType == Block.sprite && !line.startsWith("__") && line.length > 0) {
+      for (let i = 0; i < line.length; i++) {
+        spritesArr.push(parseInt(line[i], 16))
+      }
+    }
+
+    if (dataType == Block.label && !line.startsWith("__") && line.length > 0) {
+      for (let i = 0; i < line.length; i++) {
+        labelArr.push(parseInt(line[i], 16))
+      }
+    }
+
+    if (dataType == Block.map && !line.startsWith("__") && line.length > 0) {
+      for (let i = 0; i < line.length; i+=2) {
+        labelArr.push(parseInt(line[i]+line[i+1], 16))
       }
     }
 
     if (line.startsWith("__")) {
-      dataType = ''
+      dataType = Block.unknown
     }
-    
+
     if (line.startsWith("__gfx__")) {
-      dataType = "sprite"
+      dataType = Block.sprite
+    }
+
+    if (line.startsWith("__label__")) {
+      dataType = Block.label
+    } 
+
+    if (line.startsWith("__map__")) {
+      dataType = Block.map
     }
   }
-  return new Uint8Array(arr)
+  return {
+    sprites: new Uint8Array(spritesArr),
+    label : new Uint8Array(labelArr),
+    map : new Uint8Array(mapArr)
+  }
 
 }
 
@@ -68,12 +95,12 @@ const createWindow = (): void => {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-  }
+    }
   });
 
   // and load the index.html of the app.
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
-  mainWindow.webContents.on('new-window', function(e, url) {
+  mainWindow.webContents.on('new-window', function (e, url) {
     e.preventDefault();
     require('electron').shell.openExternal(url);
   });
