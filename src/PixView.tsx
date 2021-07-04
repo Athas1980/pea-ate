@@ -29,11 +29,8 @@ const PixView: FC<PixViewProps> = ({ width, height, zoom, data, palette }: PixVi
       console.log("setting pixel data")
 
       const ctx = ref.current.getContext("2d")
-      console.log(ctx)
       const imageData = ctx.getImageData(0, 0, ref.current.width, ref.current.height)
-      console.log(imageData)
       const byteData = imageData.data;
-      console.log(byteData.length)
       for (var i = 0; i < byteData.length; i += 4) {
         const colour = paletteLookup(data[i / 4])
         byteData[i] = colour.r   // red
@@ -41,7 +38,6 @@ const PixView: FC<PixViewProps> = ({ width, height, zoom, data, palette }: PixVi
         byteData[i + 2] = colour.b; // blue
         byteData[i + 3] = colour.a
       }
-      console.log(imageData)
       ctx.putImageData(imageData, 0, 0);
     }
   })
@@ -88,7 +84,6 @@ class ZoomablePixView extends Component<ZoomablePixViewProperties, ZoomablePixVi
   }
 
   zoomIn() {
-    console.log("oom")
     this.setState({ zoom: this.state.zoom + 1 })
   }
 

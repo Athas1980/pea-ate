@@ -5,7 +5,6 @@ import { ipcRenderer } from 'electron'
 type SpriteSheetData = {
   width: number;
   height: number;
-  zoom: number;
   data: Uint8Array;
 }
 
@@ -35,18 +34,20 @@ const MapView: FC<MapViewProps> = ({ width, height, zoom, data, spriteSheet, pal
 
   function updateMap() {
     if (ref && data && spriteCanvas) {
-      data.forEach(
-        (spriteNumber, index) => {
-          const spriteCtx = spriteCanvas.getContext("2d");
-          const spritesPerRow = spriteSheet.width / 8
-          const x = spriteNumber % (spritesPerRow)
-          const y = Math.floor(spriteNumber % (spritesPerRow))
-          const spritePix = spriteCtx.getImageData(x, y, 8, 8)
 
-          const mapCtx = ref.current.getContext("2d")
-          mapCtx.putImageData(spritePix, index % width, Math.floor(index / width))
-        }
-      )
+      for (let i = 0; i < data.length; i++) {
+        const spriteNumber = data[i]
+        if(spriteNumber == 0) continue
+        const spriteCtx = spriteCanvas.getContext("2d");
+        const spritesPerRow = spriteSheet.width / 8
+        const x = (spriteNumber % spritesPerRow) * 8;
+        const y = Math.floor(spriteNumber / spritesPerRow) * 8;
+        console.log("source x", x, "source y",y)
+        const spritePix = spriteCtx.getImageData(x, y, 8, 8)
+
+        const mapCtx = ref.current.getContext("2d")
+        mapCtx.putImageData(spritePix, (i % width) * 8, Math.floor(i / width) * 8)
+      }
     }
   }
 
@@ -56,11 +57,8 @@ const MapView: FC<MapViewProps> = ({ width, height, zoom, data, spriteSheet, pal
     if (spriteCanvas && data) {
 
       const ctx = spriteCanvas.getContext("2d");
-      console.log(ctx);
       const imageData = ctx.getImageData(0, 0, spriteCanvas.width, spriteCanvas.height);
-      console.log(imageData);
       const byteData = imageData.data;
-      console.log(byteData.length);
       for (var i = 0; i < byteData.length; i += 4) {
         const colour = paletteLookup(data[i / 4]);
         byteData[i] = colour.r; // red
@@ -68,7 +66,6 @@ const MapView: FC<MapViewProps> = ({ width, height, zoom, data, spriteSheet, pal
         byteData[i + 2] = colour.b; // blue
         byteData[i + 3] = colour.a;
       }
-      console.log(imageData);
       ctx.putImageData(imageData, 0, 0);
     }
   }
@@ -80,7 +77,7 @@ const MapView: FC<MapViewProps> = ({ width, height, zoom, data, spriteSheet, pal
     return toRgba("000000")
   }
 
-  return (<canvas ref={ref} height={height} width={width} style={style} className="pixView"></canvas>)
+  return (<canvas ref={ref} height={height*8} width={width*8} style={style} className="pixView"></canvas>)
 }
 
 function toRgba(hex: string) {

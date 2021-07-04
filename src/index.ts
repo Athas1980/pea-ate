@@ -16,17 +16,10 @@ if (require('electron-squirrel-startup')) { // eslint-disable-line global-requir
 }
 
 ipcMain.on('loadP8', (e, arg) => {
-  console.log(demo)
   const p = arg || './.webpack/main/' + demo
 
   const promise = loadData(p)
   promise.then((c) => e.reply('loadP8Reply', c))
-
-  // promise.then((value) => {
-  //   console.log("blahblahblah", value),
-
-  //   e.reply('loadP8Reply', {"sprites" : value})
-  // })
 })
 
 async function loadData(path: string) {
@@ -59,7 +52,7 @@ async function loadData(path: string) {
 
     if (dataType == Block.map && !line.startsWith("__") && line.length > 0) {
       for (let i = 0; i < line.length; i+=2) {
-        labelArr.push(parseInt(line[i]+line[i+1], 16))
+        mapArr.push(parseInt(line[i]+line[i+1], 16))
       }
     }
 
@@ -68,17 +61,21 @@ async function loadData(path: string) {
     }
 
     if (line.startsWith("__gfx__")) {
+      console.log("reading sprite data")
       dataType = Block.sprite
     }
 
     if (line.startsWith("__label__")) {
+      console.log("reading label data")
       dataType = Block.label
     } 
 
     if (line.startsWith("__map__")) {
+      console.log("reading map data")
       dataType = Block.map
     }
   }
+
   return {
     sprites: new Uint8Array(spritesArr),
     label : new Uint8Array(labelArr),
