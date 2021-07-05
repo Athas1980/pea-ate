@@ -1,6 +1,5 @@
-import React, { createRef, FC, RefObject, useEffect } from 'react';
-import { Component, useRef } from 'react';
-import { ipcRenderer } from 'electron'
+import React, { FC, useEffect } from 'react';
+import { useRef } from 'react';
 
 type SpriteSheetData = {
   width: number;

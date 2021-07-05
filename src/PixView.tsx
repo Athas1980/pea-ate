@@ -23,7 +23,7 @@ const PixView: FC<PixViewProps> = ({ width, height, zoom, data, palette }: PixVi
     height: height * zoom
 
   }
-
+  
   useEffect(() => {
     if (ref.current && data) {
       console.log("setting pixel data")

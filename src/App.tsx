@@ -21,6 +21,7 @@ const App = () => {
   const [mapData, setMapData] = React.useState(new Uint8Array)
   const [view, setView] = React.useState(View.Overview)
   const [labelData, setLabelData] = React.useState(new Uint8Array())
+  const [spriteCache, setSpriteCache] = React.useState([] as ImageData[])
 
   useEffect(() => {
     if (!initialized) {
@@ -114,7 +115,7 @@ const PaletteChooser = (props: { current: Array<string>, available: Array<string
     }
   }
 
-  return <div className="palleteBoxWrapper">
+  return <div className="palleteBoxWrapper" key={selectedIndex}>
     <h1>Current Palette {selectedIndex}</h1>
     <div className="paletteBox">
       {colours}
