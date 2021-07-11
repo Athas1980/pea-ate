@@ -26,7 +26,6 @@ const PixView: FC<PixViewProps> = ({ width, height, zoom, data, palette }: PixVi
   
   useEffect(() => {
     if (ref.current && data) {
-      console.log("setting pixel data")
 
       const ctx = ref.current.getContext("2d")
       const imageData = ctx.getImageData(0, 0, ref.current.width, ref.current.height)

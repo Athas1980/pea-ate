@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import ZoomablePixView from './PixView';
 import MapView from './MapView';
+import MapCacher from "./MapCacher"
 import { hot } from 'react-hot-loader';
 import { default_pallete_hex, full_pallete_hex } from './Palettes';
 import { ipcRenderer } from 'electron';
@@ -49,16 +50,25 @@ const App = () => {
     setLabelData(data)
   }
 
+  function setSpriteCacheItem(idx:number, data:ImageData) {
+
+    console.log("Setting sprite", idx, data, spriteCache)
+    const copy = spriteCache.slice()
+    copy[idx] = data
+    setSpriteCache(copy)
+  }
+
 
   const spriteSheetData = {
     width: 128,
     height: 128,
-    data: spriteSheet
+    spriteCache: spriteCache
   }
 
   return (
     <div>
       <div className="toolbar"><img src={logo}></img><button>Map</button></div>
+      <MapCacher data={spriteSheet} palette={palette} spriteCacheSetter={setSpriteCache}></MapCacher>
       <div className="info">
         <div className="fileInfo">
           <h1>File Info</h1>
@@ -116,6 +126,7 @@ const PaletteChooser = (props: { current: Array<string>, available: Array<string
   }
 
   return <div className="palleteBoxWrapper" key={selectedIndex}>
+
     <h1>Current Palette {selectedIndex}</h1>
     <div className="paletteBox">
       {colours}
