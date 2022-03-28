@@ -1,6 +1,5 @@
-import React, { createRef, FC, RefObject, useEffect } from 'react';
+import React, { FC, useEffect } from 'react';
 import { Component, useRef } from 'react';
-import { ipcRenderer } from 'electron'
 
 type PixViewProps = {
   // using `interface` is also ok
