@@ -16,10 +16,6 @@ body {
 
 }
 
-canvas {
-  border:1px solid black;
-}
-
 h1 {
   margin:10px;
   font-size: 1.5rem;
@@ -52,6 +48,7 @@ h1 {
   border: 2px solid white;
   padding:2px;
   transition: width 0.25s, height 0.25s;
+  display: inline-block;
 }
 
 .info > div {

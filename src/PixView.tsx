@@ -1,4 +1,4 @@
-import React, { FC, useEffect } from 'react';
+import React, { FC, MouseEvent, useEffect } from 'react';
 import { Component, useRef } from 'react';
 
 type PixViewProps = {
@@ -22,7 +22,7 @@ const PixView: FC<PixViewProps> = ({ width, height, zoom, data, palette }: PixVi
     height: height * zoom
 
   }
-  
+
   useEffect(() => {
     if (ref.current && data) {
 
@@ -48,7 +48,17 @@ const PixView: FC<PixViewProps> = ({ width, height, zoom, data, palette }: PixVi
     return toRgba("000000")
   }
 
-  return (<canvas ref={ref} height={height} width={width} style={style} className="pixView"></canvas>)
+  function handleMouseMove(event: MouseEvent) {
+    console.log({ x: event.nativeEvent.offsetX, y: event.nativeEvent.offsetY })
+    console.log({ x: Math.floor(event.nativeEvent.offsetX / zoom), y: Math.floor(event.nativeEvent.offsetY / zoom) })
+  }
+
+  return (
+    <span className='pixView'>
+      <canvas ref={ref}
+        height={height} width={width}
+        style={style} onMouseMove={handleMouseMove}></canvas>
+    </span>)
 }
 
 function toRgba(hex: string) {
