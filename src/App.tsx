@@ -7,6 +7,12 @@ import { default_pallete_hex, full_pallete_hex } from './Palettes';
 import logo from './resources/pea.png';
 import { P8FileReader } from './FileReader/FileReader';
 import { Overview } from './Overview/Overview';
+import {
+  MemoryRouter as Router,
+  Routes,
+  Route,
+  Link
+} from "react-router-dom";
 enum View {
   Overview,
   SpriteEditor,
@@ -40,12 +46,12 @@ const App = () => {
   function spiteCallBack(data: Uint8Array) {
     setSpriteSheet(data)
   }
-  
+
   function mapCallBack(data: Uint8Array) {
     setMapData(data)
   }
 
-  function labelCallBack(data:Uint8Array) {
+  function labelCallBack(data: Uint8Array) {
     setLabelData(data)
   }
 
@@ -56,18 +62,37 @@ const App = () => {
     data: spriteSheet
   }
 
-  return (
-    <div>
-      <div className="toolbar"><img src={logo}></img><button>Map</button></div>
-      <Overview palette={palette} availablePalette={full_pallete_hex} handlePaletteChange={handlePaletteChange}></Overview>
-      <h1>Sprite Sheet</h1> 
-      <ZoomablePixView width={128} height={128} palette={palette} data={spriteSheet}></ZoomablePixView>
 
-      <h1>label</h1>
-      <ZoomablePixView width={128} height={128} palette={palette} data={labelData}></ZoomablePixView>
-      <h1>Map</h1>
-      <MapView width={128} zoom={1} height={64} palette={palette} data={mapData} spriteSheet={spriteSheetData}></MapView>
-    </div>
+  return (
+    <Router>
+      <div>
+        <div className="toolbar"><img src={logo}></img>
+          <Link to="/sprites-sheet">sprite sheet</Link>
+          <Link to="/map">map</Link>
+          <Link to="/label">Label</Link>
+          <Link to="/">Overview</Link>
+        </div>
+        <Routes>
+          <Route path='/' element={
+            <Overview palette={palette} availablePalette={full_pallete_hex} handlePaletteChange={handlePaletteChange}></Overview>
+          }>
+          </Route>
+
+          <Route path="/sprites-sheet" element={
+            <ZoomablePixView width={128} height={128} palette={palette} data={spriteSheet}></ZoomablePixView>
+          }>
+          </Route>
+          <Route path="/label" element={
+            <ZoomablePixView width={128} height={128} palette={palette} data={labelData}></ZoomablePixView>
+          }>
+          </Route>
+          <Route path="map" element={
+            <MapView width={128} zoom={1} height={64} palette={palette} data={mapData} spriteSheet={spriteSheetData}></MapView>
+          }>
+          </Route>
+        </Routes>
+      </div>
+    </Router>
   )
 }
 
