@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import ZoomablePixView from './PixView';
+import { SpriteEditor } from "./SpriteEditor/SpriteEditor"
 import MapView from './MapView';
 import { hot } from 'react-hot-loader';
 import { default_pallete_hex, full_pallete_hex } from './Palettes';
@@ -26,7 +27,6 @@ const App = () => {
   const [palette, setPalette] = React.useState(default_pallete_hex)
   const [spriteSheet, setSpriteSheet] = React.useState(new Uint8Array())
   const [mapData, setMapData] = React.useState(new Uint8Array)
-  const [view, setView] = React.useState(View.Overview)
   const [labelData, setLabelData] = React.useState(new Uint8Array())
 
   useEffect(() => {
@@ -59,7 +59,8 @@ const App = () => {
   const spriteSheetData = {
     width: 128,
     height: 128,
-    data: spriteSheet
+    data: spriteSheet,
+    palette: palette
   }
 
 
@@ -79,7 +80,7 @@ const App = () => {
           </Route>
 
           <Route path="/sprites-sheet" element={
-            <ZoomablePixView width={128} height={128} palette={palette} data={spriteSheet}></ZoomablePixView>
+            <SpriteEditor spriteSheet={spriteSheetData}></SpriteEditor>
           }>
           </Route>
           <Route path="/label" element={

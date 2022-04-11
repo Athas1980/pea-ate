@@ -8,7 +8,7 @@ export const PaletteChooser = (props: { current: Array<string>, available: Array
     const style = {
       backgroundColor: "#" + colour
     }
-    return <div className="palletePreview" style={style} onClick={() => setSelectedIndex(index)}>{index}</div>
+    return <div className="palletePreview" key={index} style={style} onClick={() => setSelectedIndex(index)}>{index}</div>
   }
 
   const colourSelected = (index: number, colour: string) => {
@@ -16,16 +16,16 @@ export const PaletteChooser = (props: { current: Array<string>, available: Array
     setSelectedIndex(null)
   }
 
-  const ChooserItem = (colour: string, index: number) => {
+  const ChooserItem = (colour: string, srcIdx: number, idx:number) => {
     const style = {
       backgroundColor: "#" + colour
     }
-    return <div className="palletePreview" style={style} onClick={() => colourSelected(index, colour)}></div>
+    return <div className="palletePreview" key={idx} style={style} onClick={() => colourSelected(srcIdx, colour)}>{idx}</div>
   }
 
 
   const colours = props.current.map((e, i) => PaletteItem(e, i))
-  const available = props.available.map((e) => ChooserItem(e, selectedIndex))
+  const available = props.available.map((e, i) => ChooserItem(e, selectedIndex, i))
   let chooserBoxStyle: any = { backgroundColour: "#222222" }
   if (selectedIndex) {
     chooserBoxStyle = {

@@ -1,4 +1,4 @@
-import React, { FC, MouseEvent, useEffect } from 'react';
+import React, { CSSProperties, FC, MouseEvent, useEffect } from 'react';
 import { Component, useRef } from 'react';
 
 type PixViewProps = {
@@ -10,17 +10,13 @@ type PixViewProps = {
   data: Uint8Array;
 
 };
-type MyState = {
-  picData: Uint8Array;
-};
 
 const PixView: FC<PixViewProps> = ({ width, height, zoom, data, palette }: PixViewProps) => {
 
   const ref = useRef<HTMLCanvasElement>(null)
-  const style = {
+  const style : CSSProperties = {
     width: width * zoom,
-    height: height * zoom
-
+    height: height * zoom,
   }
 
   useEffect(() => {
@@ -74,14 +70,14 @@ type ZoomablePixViewState = {
   zoom: number
 }
 
-type ZoomablePixViewProperties = {
+export interface ZoomablePixViewProperties {
   width: number;
   height: number;
   palette: Array<string>;
   data: Uint8Array;
 }
 
-class ZoomablePixView extends Component<ZoomablePixViewProperties, ZoomablePixViewState> {
+export class ZoomablePixView extends Component<ZoomablePixViewProperties, ZoomablePixViewState> {
 
   constructor(props: ZoomablePixViewProperties) {
     super(props)

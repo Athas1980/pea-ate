@@ -1,5 +1,6 @@
 import React, { FC, useEffect } from 'react';
 import { useRef } from 'react';
+import { Sprites } from './Sprites/SpriteCache';
 
 type SpriteSheetData = {
   width: number;
@@ -38,7 +39,7 @@ const MapView: FC<MapViewProps> = ({ width, height, zoom, data, spriteSheet, pal
       const spriteCtx = spriteCanvas.getContext("2d");
       const mapCtx = ref.current.getContext("2d")
       const start =performance.now()
-      const sprites  = new ImageDataCache()
+      const sprites  = new Sprites()
 
       for (let i = 0; i < data.length; i++) {
         const spriteNumber = data[i]
@@ -96,20 +97,5 @@ function toRgba(hex: string) {
     "a": 255
   }
 }
-
-class ImageDataCache {
-  private sprites :Array<ImageData> = []
-  
-  getOrElse(spriteNumber:number, func:(spriteNumber:Number) => ImageData) {
-    const existing = this.sprites[spriteNumber]
-    if (existing) {
-      return existing;
-    }
-    const calculated = func(spriteNumber)
-    this.sprites[spriteNumber] = calculated
-    return calculated
-  }
-}
-
 
 export default MapView
