@@ -1,11 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { STANDARD_PALETTE, SECRET_PALETTE } from '../types/cart'
 
-interface SpriteRegion { x: number; y: number; w: number; h: number }
+export interface SpriteRegion { x: number; y: number; w: number; h: number }
 interface NamedPalette { name: string; drawPalette: number[]; transparentColours: number[] }
 type Rgb = [number, number, number]
-
-export interface SpriteRegion { x: number; y: number; w: number; h: number }
 
 interface Props {
   gfx: Uint8Array
