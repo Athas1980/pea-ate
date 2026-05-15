@@ -1,0 +1,38 @@
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+@import "tailwindcss";
+
+:root {
+  --p8-black:        #000000;
+  --p8-dark-blue:    #1D2B53;
+  --p8-dark-purple:  #7E2553;
+  --p8-dark-green:   #008751;
+  --p8-brown:        #AB5236;
+  --p8-dark-grey:    #5F574F;
+  --p8-light-grey:   #C2C3C7;
+  --p8-white:        #FFF1E8;
+  --p8-red:          #FF004D;
+  --p8-orange:       #FFA300;
+  --p8-yellow:       #FFEC27;
+  --p8-green:        #00E436;
+  --p8-blue:         #29ADFF;
+  --p8-lavender:     #83769C;
+  --p8-pink:         #FF77A8;
+  --p8-light-peach:  #FFCCAA;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #000;
+  color: var(--p8-white);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  line-height: 1.6;
+}
+
+canvas {
+  image-rendering: pixelated;
+}
