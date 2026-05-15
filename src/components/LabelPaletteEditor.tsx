@@ -82,7 +82,7 @@ export default function LabelPaletteEditor({ label, labelPalette, onChange }: Pr
       </div>
 
       {selectedValue !== null && (
-        <div className="flex flex-col gap-2 border border-[var(--p8-dark-grey)] p-2">
+        <div className="flex flex-col gap-1 border border-[var(--p8-dark-grey)] p-2 w-fit">
           <span className="text-[var(--p8-light-grey)]">
             index {selectedValue} → {(labelPalette[selectedValue] ?? selectedValue)}
           </span>
@@ -125,7 +125,7 @@ function ColourRow({ label, colours, startIdx, current, onSelect }: {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[var(--p8-light-grey)]">{label}</span>
-      <div className="flex gap-1 flex-wrap">
+      <div className="grid grid-cols-4 gap-px w-fit">
         {colours.map((hex, i) => {
           const idx = startIdx + i
           return (

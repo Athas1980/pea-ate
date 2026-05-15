@@ -18,7 +18,10 @@ export interface PaletteToolData {
   showZeroTile: boolean
   /** label colour remaps: maps original label index (0-31) to replacement index (0-31) */
   labelPalette?: Record<number, number>
-  // future: namedPalettes: Array<{ name: string; drawPalette: number[] }>
+  /** saved palette snapshots for comparison in the sprite inspector */
+  namedPalettes?: Array<{ name: string; drawPalette: number[]; transparentColours?: number[] }>
+  /** draw palette slot indices (0–15) that are treated as transparent (current working state) */
+  transparentColours?: number[]
 }
 
 /** Standard Pico-8 palette, index 0–15 */
