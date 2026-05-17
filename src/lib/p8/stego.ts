@@ -57,11 +57,14 @@ function extractMap(bytes: Uint8Array, gfx: Uint8Array): Uint8Array {
     for (let c = 0; c < 128; c++)
       map[r * 128 + c] = bytes[0x2000 + r * 128 + c]
 
-  // Bottom 32 rows from shared gfx region — mirrors parse.ts formula for consistency
+  // Bottom 32 rows from shared gfx region.
+  // Two gfx rows per map row: gfxRow = 64 + 2*row + floor(col/64), colPair = col%64.
   for (let row = 0; row < 32; row++)
     for (let col = 0; col < 128; col++) {
-      const lo = gfx[(64 + row) * 128 + col * 2]
-      const hi = gfx[(64 + row) * 128 + col * 2 + 1]
+      const gfxRow = 64 + 2 * row + Math.floor(col / 64)
+      const colPair = col % 64
+      const lo = gfx[gfxRow * 128 + colPair * 2]
+      const hi = gfx[gfxRow * 128 + colPair * 2 + 1]
       map[(32 + row) * 128 + col] = lo | (hi << 4)
     }
 

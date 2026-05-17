@@ -110,6 +110,15 @@ export default function MapView({ gfx, map, drawPalette, tileRows, showZeroTile 
     }
   }
 
+  function handleExport() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const link = document.createElement('a')
+    link.download = 'map.png'
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -125,6 +134,10 @@ export default function MapView({ gfx, map, drawPalette, tileRows, showZeroTile 
           className="w-6 h-6 text-center text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
         >+</button>
         <span className="text-[var(--p8-light-grey)] ml-2">drag to pan · shift+scroll horizontal</span>
+        <button
+          onClick={handleExport}
+          className="ml-auto px-2 py-0.5 text-[var(--p8-white)] border border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]"
+        >export png</button>
       </div>
       <div
         ref={scrollRef}

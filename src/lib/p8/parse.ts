@@ -99,13 +99,15 @@ function parseMap(raw: string, gfx: Uint8Array): Uint8Array {
     }
   }
 
-  // Bottom 32 rows shared with bottom half of gfx (rows 64–127)
+  // Bottom 32 rows shared with bottom half of gfx (rows 64–127).
+  // Each map row is 128 bytes but each gfx row is only 64 bytes (128 pixels packed
+  // 2-per-byte), so two gfx rows feed one map row. gfxRow = 64 + 2*row + floor(col/64).
   for (let row = 0; row < 32; row++) {
     for (let col = 0; col < 128; col++) {
-      // Each gfx row is 128 nibbles; map byte = two nibbles (lo then hi)
-      const gfxRow = 64 + row
-      const lo = gfx[gfxRow * 128 + col * 2]
-      const hi = gfx[gfxRow * 128 + col * 2 + 1]
+      const gfxRow = 64 + 2 * row + Math.floor(col / 64)
+      const colPair = col % 64
+      const lo = gfx[gfxRow * 128 + colPair * 2]
+      const hi = gfx[gfxRow * 128 + colPair * 2 + 1]
       tiles[(32 + row) * 128 + col] = lo | (hi << 4)
     }
   }
