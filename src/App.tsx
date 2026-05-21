@@ -110,138 +110,154 @@ export default function App() {
     URL.revokeObjectURL(url)
   }
 
+  const tabs = ['spritesheet', 'map', ...(cart?.label ? ['label'] : []), 'inspector', 'options'] as Tab[]
+
+  const paletteEditorProps = {
+    drawPalette,
+    onChange: setDrawPalette,
+    namedPalettes,
+    onSavePalette: (name: string) => setNamedPalettes(prev => [...prev, { name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }]),
+    onDeletePalette: (i: number) => setNamedPalettes(prev => prev.filter((_, j) => j !== i)),
+    onApplyPalette: applyNamedPalette,
+    transparentColours,
+    onTransparencyChange: setTransparentColours,
+  }
+
   return (
-    <div className="min-h-screen p-4">
-      <header className="mb-6">
-        <h1 className="text-[var(--p8-yellow)] text-xs mb-1">pea-ate</h1>
-        <p className="text-[var(--p8-light-grey)]">pico-8 palette tool</p>
+    <div className="min-h-screen flex flex-col">
+
+      {/* Top bar */}
+      <header className="bg-[var(--p8-red)] flex items-stretch shrink-0">
+        <div className="flex items-center px-4 py-2">
+          <span className="text-[var(--p8-white)] text-xs tracking-widest">pea-ate</span>
+        </div>
+
+        {cart ? (
+          <>
+            <nav className="flex items-stretch flex-1">
+              {tabs.map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`px-4 py-2 transition-colors ${
+                    tab === t
+                      ? 'bg-[rgba(0,0,0,0.3)] text-[var(--p8-white)]'
+                      : 'text-[var(--p8-pink)] hover:text-[var(--p8-white)]'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </nav>
+            <div className="flex items-center gap-4 px-4">
+              <button
+                onClick={handleExport}
+                className="text-[var(--p8-white)] opacity-80 hover:opacity-100"
+              >
+                export .p8
+              </button>
+              <button
+                onClick={() => setCart(null)}
+                className="text-[var(--p8-white)] opacity-40 hover:opacity-100"
+              >
+                eject
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center px-4 opacity-50">
+            <span className="text-[var(--p8-white)]">pico-8 palette tool</span>
+          </div>
+        )}
       </header>
 
-      {!cart ? (
-        <DropZone onLoad={handleLoad} />
-      ) : (
-        <>
-          <nav className="flex gap-2 mb-4 items-center">
-            {(['spritesheet', 'map', ...(cart.label ? ['label'] : []), 'inspector', 'options'] as Tab[]).map(t => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-3 py-2 text-[8px] ${
-                  tab === t
-                    ? 'bg-[var(--p8-dark-blue)] text-[var(--p8-white)]'
-                    : 'text-[var(--p8-light-grey)]'
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-            <button
-              onClick={handleExport}
-              className="ml-auto text-[var(--p8-green)] hover:text-[var(--p8-white)]"
-            >
-              export .p8
-            </button>
-            <button
-              onClick={() => setCart(null)}
-              className="ml-4 text-[var(--p8-light-grey)]"
-            >
-              eject
-            </button>
-          </nav>
-
-          {tab === 'spritesheet' && (
-            <div className="flex gap-6 items-start">
-              <SpritesheetView
-                gfx={cart.gfx}
-                drawPalette={drawPalette}
-                pixelRows={cartOpts.useSharedMap ? 64 : 128}
-              />
-              <PaletteEditor
-                drawPalette={drawPalette} onChange={setDrawPalette}
-                namedPalettes={namedPalettes}
-                onSavePalette={name => setNamedPalettes(prev => [...prev, { name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }])}
-                onDeletePalette={i => setNamedPalettes(prev => prev.filter((_, j) => j !== i))}
-                onApplyPalette={applyNamedPalette}
-                transparentColours={transparentColours}
-                onTransparencyChange={setTransparentColours}
-              />
-            </div>
-          )}
-          {tab === 'map' && (
-            <div className="flex gap-6 items-start">
-              <MapView
-                gfx={cart.gfx}
-                map={mapData ?? cart.map}
-                drawPalette={drawPalette}
-                tileRows={cartOpts.useSharedMap ? 64 : 32}
-                showZeroTile={cartOpts.showZeroTile}
-                mapWidth={mapWidth}
-                storedMapWidth={storedMapWidth}
-                onMapWidthChange={setMapWidth}
-                mode={mapMode}
-                onModeChange={setMapMode}
-                brush={tileBrush}
-                onStrokeStart={handleStrokeStart}
-                onMapChange={setMapData}
-              />
-              <div className="flex flex-col gap-4">
-                {mapMode === 'edit' && (
-                  <TilePicker
-                    gfx={cart.gfx}
-                    drawPalette={drawPalette}
-                    brush={tileBrush}
-                    onBrushChange={setTileBrush}
-                  />
-                )}
-                <PaletteEditor
-                  drawPalette={drawPalette} onChange={setDrawPalette}
+      {/* Content */}
+      <main className="flex-1 p-4">
+        {!cart ? (
+          <DropZone onLoad={handleLoad} />
+        ) : (
+          <>
+            {tab === 'spritesheet' && (
+              <div className="flex gap-6 items-start">
+                <SpritesheetView
+                  gfx={cart.gfx}
+                  drawPalette={drawPalette}
+                  pixelRows={cartOpts.useSharedMap ? 64 : 128}
+                />
+                <PaletteEditor {...paletteEditorProps} />
+              </div>
+            )}
+            {tab === 'map' && (
+              <div className="flex gap-6 items-start">
+                <MapView
+                  gfx={cart.gfx}
+                  map={mapData ?? cart.map}
+                  drawPalette={drawPalette}
+                  tileRows={cartOpts.useSharedMap ? 64 : 32}
+                  showZeroTile={cartOpts.showZeroTile}
+                  mapWidth={mapWidth}
+                  storedMapWidth={storedMapWidth}
+                  onMapWidthChange={setMapWidth}
+                  mode={mapMode}
+                  onModeChange={setMapMode}
+                  brush={tileBrush}
+                  onStrokeStart={handleStrokeStart}
+                  onMapChange={setMapData}
+                />
+                <div className="flex flex-col gap-4">
+                  {mapMode === 'edit' && (
+                    <TilePicker
+                      gfx={cart.gfx}
+                      drawPalette={drawPalette}
+                      brush={tileBrush}
+                      onBrushChange={setTileBrush}
+                    />
+                  )}
+                  <PaletteEditor {...paletteEditorProps} />
+                </div>
+              </div>
+            )}
+            {tab === 'inspector' && (
+              <div className="flex gap-6 items-start">
+                <SpriteInspector
+                  gfx={cart.gfx}
+                  drawPalette={drawPalette}
                   namedPalettes={namedPalettes}
-                  onSavePalette={name => setNamedPalettes(prev => [...prev, { name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }])}
-                  onDeletePalette={i => setNamedPalettes(prev => prev.filter((_, j) => j !== i))}
-                  onApplyPalette={applyNamedPalette}
                   transparentColours={transparentColours}
-                  onTransparencyChange={setTransparentColours}
+                  selection={spriteSelection}
+                  onSelectionChange={setSpriteSelection}
+                  onApplyPalette={(p, t) => { setDrawPalette(p); setTransparentColours(t) }}
+                />
+                <PaletteEditor {...paletteEditorProps} />
+              </div>
+            )}
+            {tab === 'label' && cart.label && (
+              <div className="flex gap-6 items-start">
+                <LabelView label={cart.label} labelPalette={labelPalette} />
+                <LabelPaletteEditor
+                  label={cart.label}
+                  labelPalette={labelPalette}
+                  onChange={setLabelPalette}
                 />
               </div>
-            </div>
+            )}
+            {tab === 'options' && (
+              <CartOptions options={cartOpts} onChange={setCartOpts} />
+            )}
+          </>
+        )}
+      </main>
+
+      {/* Footer status bar */}
+      {cart && (
+        <footer className="bg-[var(--p8-red)] px-4 py-1.5 flex items-center gap-6 shrink-0">
+          <span className="text-[var(--p8-white)] opacity-75">{filename}</span>
+          {tab === 'map' && mapWidth !== 128 && (
+            <span className="text-[var(--p8-white)] opacity-75 font-mono">poke(0x5f57, {mapWidth})</span>
           )}
-          {tab === 'inspector' && (
-            <div className="flex gap-6 items-start">
-              <SpriteInspector
-                gfx={cart.gfx}
-                drawPalette={drawPalette}
-                namedPalettes={namedPalettes}
-                transparentColours={transparentColours}
-                selection={spriteSelection}
-                onSelectionChange={setSpriteSelection}
-                onApplyPalette={(p, t) => { setDrawPalette(p); setTransparentColours(t) }}
-              />
-              <PaletteEditor
-                drawPalette={drawPalette} onChange={setDrawPalette}
-                namedPalettes={namedPalettes}
-                onSavePalette={name => setNamedPalettes(prev => [...prev, { name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }])}
-                onDeletePalette={i => setNamedPalettes(prev => prev.filter((_, j) => j !== i))}
-                onApplyPalette={applyNamedPalette}
-                transparentColours={transparentColours}
-                onTransparencyChange={setTransparentColours}
-              />
-            </div>
-          )}
-          {tab === 'label' && cart.label && (
-            <div className="flex gap-6 items-start">
-              <LabelView label={cart.label} labelPalette={labelPalette} />
-              <LabelPaletteEditor
-                label={cart.label}
-                labelPalette={labelPalette}
-                onChange={setLabelPalette}
-              />
-            </div>
-          )}
-          {tab === 'options' && (
-            <CartOptions options={cartOpts} onChange={setCartOpts} />
-          )}
-        </>
+        </footer>
       )}
+
     </div>
   )
 }

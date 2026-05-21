@@ -208,7 +208,8 @@ export default function MapView({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* Controls row */}
+      <div className="flex items-center gap-2">
         <button
           onClick={() => setZoom(z => Math.max(MIN_ZOOM, z - 1))}
           disabled={zoom === MIN_ZOOM}
@@ -220,6 +221,8 @@ export default function MapView({
           disabled={zoom === MAX_ZOOM}
           className="w-6 h-6 text-center text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
         >+</button>
+
+        <span className="text-[var(--p8-dark-grey)]">·</span>
 
         <button
           onClick={() => onModeChange(mode === 'view' ? 'edit' : 'view')}
@@ -243,8 +246,15 @@ export default function MapView({
           >grid</button>
         )}
 
-        <span className="text-[var(--p8-dark-grey)]">|</span>
-        <label className="text-[var(--p8-light-grey)]">w</label>
+        <button
+          onClick={handleExport}
+          className="ml-auto px-2 py-0.5 text-[var(--p8-white)] border border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]"
+        >export png</button>
+      </div>
+
+      {/* Config / status row */}
+      <div className="flex items-center gap-2 text-[var(--p8-dark-grey)]">
+        <span>w</span>
         <input
           type="number"
           min={1}
@@ -265,28 +275,19 @@ export default function MapView({
           }}
           className="w-14 bg-[var(--p8-black)] border border-[var(--p8-dark-grey)] text-[var(--p8-white)] px-1 text-center"
         />
-        <span className="text-[var(--p8-dark-grey)]">tiles · {displayRows} rows</span>
+        <span>· {displayRows} rows</span>
 
         {mapWidth !== storedMapWidth && (
           <button
             onClick={() => onMapWidthChange?.(storedMapWidth)}
-            className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]"
-          >reset</button>
+            className="hover:text-[var(--p8-light-grey)]"
+          >· reset</button>
         )}
 
         {mode === 'view' && (
-          <span className="text-[var(--p8-dark-grey)]">· drag to pan · shift+scroll →</span>
+          <span className="ml-auto">drag to pan · shift+scroll →</span>
         )}
-
-        <button
-          onClick={handleExport}
-          className="ml-auto px-2 py-0.5 text-[var(--p8-white)] border border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]"
-        >export png</button>
       </div>
-
-      {mapWidth !== 128 && (
-        <p className="text-[var(--p8-light-grey)] font-mono">poke(0x5f57, {mapWidth})</p>
-      )}
 
       <div
         ref={scrollRef}
