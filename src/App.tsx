@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react'
-import type { Cart, PaletteToolData } from './types/cart'
+import { useEffect, useRef, useState } from 'react'
+import type { Cart, PaletteToolData, TileBrush } from './types/cart'
 import { parseP8 } from './lib/p8/parse'
 import { serialiseP8 } from './lib/p8/export'
 import { decodePngCart } from './lib/p8/stego'
 import SpritesheetView from './components/SpritesheetView'
 import MapView from './components/MapView'
+import TilePicker from './components/TilePicker'
 import PaletteEditor from './components/PaletteEditor'
 import CartOptions from './components/CartOptions'
 import LabelView from './components/LabelView'
@@ -35,6 +36,12 @@ export default function App() {
   const [namedPalettes, setNamedPalettes] = useState<NamedPalette[]>([])
   const [transparentColours, setTransparentColours] = useState<number[]>([])
   const [spriteSelection, setSpriteSelection] = useState<SpriteRegion>({ x: 0, y: 0, w: 1, h: 1 })
+  const [mapData, setMapData] = useState<Uint8Array | null>(null)
+  const [mapWidth, setMapWidth] = useState<number>(128)
+  const [storedMapWidth, setStoredMapWidth] = useState<number>(128)
+  const [tileBrush, setTileBrush] = useState<TileBrush>({ tileX: 0, tileY: 0, w: 1, h: 1 })
+  const [mapMode, setMapMode] = useState<'view' | 'edit'>('view')
+  const [mapHistory, setMapHistory] = useState<Uint8Array[]>([])
 
   function handleLoad(loaded: Cart, name: string) {
     setCart(loaded)
@@ -48,7 +55,33 @@ export default function App() {
       useSharedMap: loaded.paletteToolData?.useSharedMap ?? true,
       showZeroTile: loaded.paletteToolData?.showZeroTile ?? false,
     })
+    setMapData(new Uint8Array(loaded.map))
+    const savedWidth = loaded.paletteToolData?.mapWidth ?? 128
+    setMapWidth(savedWidth)
+    setStoredMapWidth(savedWidth)
+    setTileBrush({ tileX: 0, tileY: 0, w: 1, h: 1 })
+    setMapMode('view')
+    setMapHistory([])
   }
+
+  function handleStrokeStart() {
+    if (mapData) setMapHistory(h => [...h.slice(-49), mapData])
+  }
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        setMapHistory(h => {
+          if (h.length === 0) return h
+          setMapData(h[h.length - 1])
+          return h.slice(0, -1)
+        })
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   function applyNamedPalette(i: number) {
     setDrawPalette([...namedPalettes[i].drawPalette])
@@ -64,8 +97,10 @@ export default function App() {
       showZeroTile: cartOpts.showZeroTile,
       namedPalettes,
       transparentColours,
+      mapWidth,
     }
-    const text = serialiseP8(cart, toolData)
+    const exportCart: Cart = { ...cart, map: mapData ?? cart.map }
+    const text = serialiseP8(exportCart, toolData)
     const blob = new Blob([text], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -136,20 +171,38 @@ export default function App() {
             <div className="flex gap-6 items-start">
               <MapView
                 gfx={cart.gfx}
-                map={cart.map}
+                map={mapData ?? cart.map}
                 drawPalette={drawPalette}
                 tileRows={cartOpts.useSharedMap ? 64 : 32}
                 showZeroTile={cartOpts.showZeroTile}
+                mapWidth={mapWidth}
+                storedMapWidth={storedMapWidth}
+                onMapWidthChange={setMapWidth}
+                mode={mapMode}
+                onModeChange={setMapMode}
+                brush={tileBrush}
+                onStrokeStart={handleStrokeStart}
+                onMapChange={setMapData}
               />
-              <PaletteEditor
-                drawPalette={drawPalette} onChange={setDrawPalette}
-                namedPalettes={namedPalettes}
-                onSavePalette={name => setNamedPalettes(prev => [...prev, { name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }])}
-                onDeletePalette={i => setNamedPalettes(prev => prev.filter((_, j) => j !== i))}
-                onApplyPalette={applyNamedPalette}
-                transparentColours={transparentColours}
-                onTransparencyChange={setTransparentColours}
-              />
+              <div className="flex flex-col gap-4">
+                {mapMode === 'edit' && (
+                  <TilePicker
+                    gfx={cart.gfx}
+                    drawPalette={drawPalette}
+                    brush={tileBrush}
+                    onBrushChange={setTileBrush}
+                  />
+                )}
+                <PaletteEditor
+                  drawPalette={drawPalette} onChange={setDrawPalette}
+                  namedPalettes={namedPalettes}
+                  onSavePalette={name => setNamedPalettes(prev => [...prev, { name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }])}
+                  onDeletePalette={i => setNamedPalettes(prev => prev.filter((_, j) => j !== i))}
+                  onApplyPalette={applyNamedPalette}
+                  transparentColours={transparentColours}
+                  onTransparencyChange={setTransparentColours}
+                />
+              </div>
             </div>
           )}
           {tab === 'inspector' && (

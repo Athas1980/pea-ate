@@ -22,6 +22,20 @@ export interface PaletteToolData {
   namedPalettes?: Array<{ name: string; drawPalette: number[]; transparentColours?: number[] }>
   /** draw palette slot indices (0–15) that are treated as transparent (current working state) */
   transparentColours?: number[]
+  /** map width in tiles — 0 means 256, defaults to 128 (poke(0x5f57, n)) */
+  mapWidth?: number
+}
+
+/** A rectangular tile selection on the spritesheet, used as a paint brush for the map editor. */
+export interface TileBrush {
+  /** leftmost tile column (0–15) */
+  tileX: number
+  /** topmost tile row (0–15) */
+  tileY: number
+  /** width in tiles */
+  w: number
+  /** height in tiles */
+  h: number
 }
 
 /** Standard Pico-8 palette, index 0–15 */
