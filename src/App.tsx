@@ -41,7 +41,7 @@ export default function App() {
   const [storedMapWidth, setStoredMapWidth] = useState<number>(128)
   const [tileBrush, setTileBrush] = useState<TileBrush>({ tileX: 0, tileY: 0, w: 1, h: 1 })
   const [mapMode, setMapMode] = useState<'view' | 'edit'>('view')
-  const [mapHistory, setMapHistory] = useState<Uint8Array[]>([])
+  const [, setMapHistory] = useState<Uint8Array[]>([])
 
   function handleLoad(loaded: Cart, name: string) {
     setCart(loaded)
@@ -128,7 +128,11 @@ export default function App() {
 
       {/* Top bar */}
       <header className="bg-[var(--p8-red)] flex items-stretch shrink-0">
-        <div className="flex items-center px-4 py-2">
+        <div className="flex items-center px-4 py-2 gap-3">
+          <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="16" cy="16" r="16" fill="#008751"/>
+            <text x="16" y="19" textAnchor="middle" dominantBaseline="middle" fill="#FFF1E8" fontFamily="'Press Start 2P', monospace" fontSize="16" fontWeight="normal">8</text>
+          </svg>
           <span className="text-[var(--p8-white)] text-xs tracking-widest">pea-ate</span>
         </div>
 
