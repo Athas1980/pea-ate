@@ -45,11 +45,11 @@ src/
 7. **Named palettes** — `PaletteToolData.namedPalettes: Array<{ name: string; drawPalette: number[]; transparentColours: number[] }>`. The active working palette is `drawPalette` state in `App.tsx` (not indexed). Saving a palette appends to the list; applying one copies its values into `drawPalette` and `transparentColours`.
 8. **Sprite inspector** — `SpriteInspector` component. Click/drag on the spritesheet canvas to select a rectangular region; renders it at 4× zoom. Compares against all named palettes to suggest a best match. `onApplyPalette` sets `drawPalette` + `transparentColours` in App.
 9. **Map editor** — tile painting on the map canvas. Key design decisions:
-   - **TODO: show sprite index on hover** — display the sprite number of the tile under the cursor (e.g. in the footer status bar, alongside the tile x/y coords)
-   - `poke(0x5f57, n)` register controls map stride; changing `mapWidth` reflowss tiles by walking bytes linearly with the new stride (not just masking columns)
+   - `poke(0x5f57, n)` register controls map stride; changing `mapWidth` reflows tiles by walking bytes linearly with the new stride (not just masking columns)
    - `TileBrush { tileX, tileY, w, h }` — multi-tile rectangular brush; stamping snaps to brush-sized grid so drag places non-overlapping copies
-   - **TODO: eraser brush** — paint tile 0 (empty) with a configurable size (e.g. 2×2). Clearing tiles one at a time is awkward. Could be a dedicated eraser mode with a size control, or just allow tile 0 to be selected as a brush from the spritesheet.
-   - **TODO: fill tool** — flood fill a region with the current brush tile. Plus a randomised variant that picks randomly from a user-defined set of tiles (e.g. select 4 tiles, fill floods with a random mix of them). Useful for background texture fills.
+   - **Eraser tool** — dedicated eraser mode in the toolbar (brush / eraser / fill), configurable size 1–4. Paints tile 0 with 1-tile drag precision (no grid snap). Size persists across carts.
+   - **Fill tool** — flood fill from clicked tile. Pattern mode (default): tiles the brush pattern across the filled region using `(y % h, x % w)` offsets. Random mode: toggle in toolbar, picks randomly from all tiles in the brush selection (only active when brush is multi-tile). Both modes push to undo history.
+   - **Hover status** — tile x,y coords and sprite index shown in footer status bar while hovering over the map canvas.
    - **TODO: copy/paste block** — select a rectangular region of the map, copy it, paste it elsewhere. Stamp the copied block over any target position.
    - Undo: 50-entry `mapHistory: Uint8Array[]` in App.tsx; push on `onStrokeStart` (mousedown), pop on Ctrl+Z
    - Grid overlay: CSS `linear-gradient` div over the canvas — stays crisp at all zoom levels and doesn't affect PNG export

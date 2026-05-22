@@ -42,6 +42,10 @@ export default function App() {
   const [storedMapWidth, setStoredMapWidth] = useState<number>(128)
   const [tileBrush, setTileBrush] = useState<TileBrush>({ tileX: 0, tileY: 0, w: 1, h: 1 })
   const [mapMode, setMapMode] = useState<'view' | 'edit'>('view')
+  const [mapTool, setMapTool] = useState<'brush' | 'eraser' | 'fill'>('brush')
+  const [eraserSize, setEraserSize] = useState<number>(1)
+  const [fillRandom, setFillRandom] = useState(false)
+  const [hoverMapTile, setHoverMapTile] = useState<{ tx: number; ty: number; tileIdx: number } | null>(null)
   const [, setMapHistory] = useState<Uint8Array[]>([])
   const [showHelp, setShowHelp] = useState(false)
 
@@ -63,6 +67,9 @@ export default function App() {
     setStoredMapWidth(savedWidth)
     setTileBrush({ tileX: 0, tileY: 0, w: 1, h: 1 })
     setMapMode('view')
+    setMapTool('brush')
+    setFillRandom(false)
+    setHoverMapTile(null)
     setMapHistory([])
   }
 
@@ -226,8 +233,15 @@ export default function App() {
                   mode={mapMode}
                   onModeChange={setMapMode}
                   brush={tileBrush}
+                  mapTool={mapTool}
+                  onToolChange={setMapTool}
+                  eraserSize={eraserSize}
+                  onEraserSizeChange={setEraserSize}
+                  fillRandom={fillRandom}
+                  onFillRandomChange={setFillRandom}
                   onStrokeStart={handleStrokeStart}
                   onMapChange={setMapData}
+                  onHoverTile={setHoverMapTile}
                 />
                 <div className="flex flex-col gap-4">
                   {mapMode === 'edit' && (
@@ -279,6 +293,11 @@ export default function App() {
           <span className="text-[var(--p8-white)] opacity-75">{filename}</span>
           {tab === 'map' && mapWidth !== 128 && (
             <span className="text-[var(--p8-white)] opacity-75 font-mono">poke(0x5f57, {mapWidth})</span>
+          )}
+          {tab === 'map' && hoverMapTile !== null && (
+            <span className="text-[var(--p8-white)] opacity-75 font-mono ml-auto">
+              {hoverMapTile.tx},{hoverMapTile.ty} · sprite {hoverMapTile.tileIdx}
+            </span>
           )}
         </footer>
       )}

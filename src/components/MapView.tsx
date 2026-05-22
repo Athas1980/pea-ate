@@ -17,15 +17,24 @@ interface Props {
   mode: 'view' | 'edit'
   onModeChange: (mode: 'view' | 'edit') => void
   brush?: TileBrush
+  mapTool?: 'brush' | 'eraser' | 'fill'
+  onToolChange?: (tool: 'brush' | 'eraser' | 'fill') => void
+  eraserSize?: number
+  onEraserSizeChange?: (size: number) => void
+  fillRandom?: boolean
+  onFillRandomChange?: (v: boolean) => void
   onStrokeStart?: () => void
   onMapChange?: (newMap: Uint8Array) => void
+  onHoverTile?: (tile: { tx: number; ty: number; tileIdx: number } | null) => void
 }
 
 export default function MapView({
   gfx, map, drawPalette, tileRows, showZeroTile,
   mapWidth = 128, storedMapWidth = 128, onMapWidthChange,
   mode, onModeChange,
-  brush, onStrokeStart, onMapChange,
+  brush, mapTool = 'brush', onToolChange, eraserSize = 1, onEraserSizeChange,
+  fillRandom = false, onFillRandomChange,
+  onStrokeStart, onMapChange, onHoverTile,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -66,6 +75,14 @@ export default function MapView({
   onMapChangeRef.current = onMapChange
   const showGridRef = useRef(showGrid)
   showGridRef.current = showGrid
+  const mapToolRef = useRef(mapTool)
+  mapToolRef.current = mapTool
+  const eraserSizeRef = useRef(eraserSize)
+  eraserSizeRef.current = eraserSize
+  const fillRandomRef = useRef(fillRandom)
+  fillRandomRef.current = fillRandom
+  const onHoverTileRef = useRef(onHoverTile)
+  onHoverTileRef.current = onHoverTile
 
   // Canvas rendering
   useEffect(() => {
@@ -103,30 +120,48 @@ export default function MapView({
 
   }, [gfx, map, drawPalette, tileRows, showZeroTile, mapWidth, totalTiles, canvasW, canvasH])
 
-  // Stamp the brush at a brush-snapped grid position
   function paintAt(clientX: number, clientY: number) {
     const canvas = canvasRef.current
-    if (!canvas || !brushRef.current || !onMapChangeRef.current) return
+    if (!canvas || !onMapChangeRef.current) return
     const rect = canvas.getBoundingClientRect()
     const rawTx = Math.floor((clientX - rect.left) / (8 * zoomRef.current))
     const rawTy = Math.floor((clientY - rect.top) / (8 * zoomRef.current))
+    const w = mapWidthRef.current
+    const total = totalTilesRef.current
 
+    if (mapToolRef.current === 'eraser') {
+      const eSize = eraserSizeRef.current
+      const tx = rawTx
+      const ty = rawTy
+      if (lastStampTile.current?.tx === tx && lastStampTile.current?.ty === ty) return
+      lastStampTile.current = { tx, ty }
+      const newMap = new Uint8Array(mapRef.current)
+      for (let by = 0; by < eSize; by++) {
+        for (let bx = 0; bx < eSize; bx++) {
+          const mx = tx + bx
+          const my = ty + by
+          const offset = my * w + mx
+          if (mx >= 0 && mx < w && offset >= 0 && offset < total) newMap[offset] = 0
+        }
+      }
+      onMapChangeRef.current(newMap)
+      return
+    }
+
+    // brush (default)
     const b = brushRef.current
-    // Snap to brush-sized grid so dragging places non-overlapping copies
+    if (!b) return
     const tx = Math.floor(rawTx / b.w) * b.w
     const ty = Math.floor(rawTy / b.h) * b.h
-
     if (lastStampTile.current?.tx === tx && lastStampTile.current?.ty === ty) return
     lastStampTile.current = { tx, ty }
-
-    const w = mapWidthRef.current
     const newMap = new Uint8Array(mapRef.current)
     for (let by = 0; by < b.h; by++) {
       for (let bx = 0; bx < b.w; bx++) {
         const mx = tx + bx
         const my = ty + by
         const offset = my * w + mx
-        if (mx >= 0 && mx < w && offset >= 0 && offset < totalTilesRef.current) {
+        if (mx >= 0 && mx < w && offset >= 0 && offset < total) {
           newMap[offset] = (b.tileY + by) * 16 + (b.tileX + bx)
         }
       }
@@ -134,9 +169,25 @@ export default function MapView({
     onMapChangeRef.current(newMap)
   }
 
+  function updateHover(clientX: number, clientY: number) {
+    const canvas = canvasRef.current
+    if (!canvas || !onHoverTileRef.current) return
+    const rect = canvas.getBoundingClientRect()
+    const tx = Math.floor((clientX - rect.left) / (8 * zoomRef.current))
+    const ty = Math.floor((clientY - rect.top) / (8 * zoomRef.current))
+    const w = mapWidthRef.current
+    const offset = ty * w + tx
+    if (tx < 0 || tx >= w || ty < 0 || offset < 0 || offset >= totalTilesRef.current) {
+      onHoverTileRef.current(null)
+    } else {
+      onHoverTileRef.current({ tx, ty, tileIdx: mapRef.current[offset] ?? 0 })
+    }
+  }
+
   // Global mouse handlers
   useEffect(() => {
     function onMouseMove(e: MouseEvent) {
+      updateHover(e.clientX, e.clientY)
       if (isPainting.current) {
         paintAt(e.clientX, e.clientY)
         return
@@ -179,6 +230,27 @@ export default function MapView({
   function handleMouseDown(e: React.MouseEvent) {
     if (e.button !== 0) return
     if (mode === 'edit') {
+      if (mapTool === 'fill') {
+        const canvas = canvasRef.current
+        if (!canvas || !onMapChange) return
+        const rect = canvas.getBoundingClientRect()
+        const tx = Math.floor((e.clientX - rect.left) / (8 * zoom))
+        const ty = Math.floor((e.clientY - rect.top) / (8 * zoom))
+        const b = brush ?? { tileX: 0, tileY: 0, w: 1, h: 1 }
+        let getTile: (tx: number, ty: number) => number
+        if (fillRandom && (b.w > 1 || b.h > 1)) {
+          const tiles: number[] = []
+          for (let by = 0; by < b.h; by++)
+            for (let bx = 0; bx < b.w; bx++)
+              tiles.push((b.tileY + by) * 16 + (b.tileX + bx))
+          getTile = () => tiles[Math.floor(Math.random() * tiles.length)]
+        } else {
+          getTile = (mx, my) => (b.tileY + my % b.h) * 16 + (b.tileX + mx % b.w)
+        }
+        onStrokeStart?.()
+        onMapChange(floodFill(map, mapWidth, totalTiles, tx, ty, getTile))
+        return
+      }
       onStrokeStart?.()
       isPainting.current = true
       lastStampTile.current = null
@@ -246,6 +318,52 @@ export default function MapView({
           >grid</button>
         )}
 
+        {mode === 'edit' && (
+          <>
+            <span className="text-[var(--p8-dark-grey)]">·</span>
+            {(['brush', 'eraser', 'fill'] as const).map(tool => (
+              <button
+                key={tool}
+                onClick={() => onToolChange?.(tool)}
+                className={`px-2 py-0.5 border ${
+                  mapTool === tool
+                    ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
+                    : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+                }`}
+              >{tool}</button>
+            ))}
+            {mapTool === 'eraser' && (
+              <>
+                <span className="text-[var(--p8-dark-grey)]">·</span>
+                {[1, 2, 3, 4].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => onEraserSizeChange?.(s)}
+                    className={`w-6 h-6 border text-center text-sm ${
+                      eraserSize === s
+                        ? 'border-[var(--p8-light-grey)] text-[var(--p8-white)]'
+                        : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+                    }`}
+                  >{s}</button>
+                ))}
+              </>
+            )}
+            {mapTool === 'fill' && (
+              <>
+                <span className="text-[var(--p8-dark-grey)]">·</span>
+                <button
+                  onClick={() => onFillRandomChange?.(!fillRandom)}
+                  className={`px-2 py-0.5 border ${
+                    fillRandom
+                      ? 'border-[var(--p8-light-grey)] text-[var(--p8-white)]'
+                      : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+                  }`}
+                >random</button>
+              </>
+            )}
+          </>
+        )}
+
         <button
           onClick={handleExport}
           className="ml-auto px-2 py-0.5 text-[var(--p8-white)] border border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]"
@@ -292,6 +410,7 @@ export default function MapView({
       <div
         ref={scrollRef}
         onMouseDown={handleMouseDown}
+        onMouseLeave={() => onHoverTile?.(null)}
         className="overflow-auto select-none"
         style={{
           maxWidth: 'calc(100vw - 320px)',
@@ -327,6 +446,39 @@ export default function MapView({
       </div>
     </div>
   )
+}
+
+function floodFill(
+  map: Uint8Array,
+  mapWidth: number,
+  totalTiles: number,
+  startTx: number,
+  startTy: number,
+  getTile: (tx: number, ty: number) => number,
+): Uint8Array {
+  const idx0 = startTy * mapWidth + startTx
+  if (idx0 < 0 || idx0 >= totalTiles) return map
+  const targetTile = map[idx0]
+
+  const newMap = new Uint8Array(map)
+  const mapHeight = Math.ceil(totalTiles / mapWidth)
+  const stack = [idx0]
+  const seen = new Uint8Array(totalTiles)
+
+  while (stack.length > 0) {
+    const i = stack.pop()!
+    if (i < 0 || i >= totalTiles || seen[i] || newMap[i] !== targetTile) continue
+    seen[i] = 1
+    const x = i % mapWidth
+    const y = Math.floor(i / mapWidth)
+    newMap[i] = getTile(x, y)
+    if (x + 1 < mapWidth) stack.push(i + 1)
+    if (x - 1 >= 0) stack.push(i - 1)
+    if (y + 1 < mapHeight) stack.push(i + mapWidth)
+    if (y - 1 >= 0) stack.push(i - mapWidth)
+  }
+
+  return newMap
 }
 
 type Rgb = [number, number, number]
