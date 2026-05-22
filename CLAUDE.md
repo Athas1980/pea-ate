@@ -2,6 +2,8 @@
 
 A browser-only SPA for loading Pico-8 carts, viewing and editing the spritesheet and map, swapping palette colours, and inspecting sprites. No backend. Exports modified `.p8` files with palette metadata stored in a custom data block.
 
+**Design philosophy:** Not constrained to match Pico-8's built-in editor capabilities. Go beyond where it makes sense — features like random fill, custom map width, multi-tile brushes, and flood fill are valid even though the built-in editor doesn't have them.
+
 ## Stack
 
 - **React 18 + Vite + TypeScript**
@@ -43,8 +45,12 @@ src/
 7. **Named palettes** — `PaletteToolData.namedPalettes: Array<{ name: string; drawPalette: number[]; transparentColours: number[] }>`. The active working palette is `drawPalette` state in `App.tsx` (not indexed). Saving a palette appends to the list; applying one copies its values into `drawPalette` and `transparentColours`.
 8. **Sprite inspector** — `SpriteInspector` component. Click/drag on the spritesheet canvas to select a rectangular region; renders it at 4× zoom. Compares against all named palettes to suggest a best match. `onApplyPalette` sets `drawPalette` + `transparentColours` in App.
 9. **Map editor** — tile painting on the map canvas. Key design decisions:
+   - **TODO: show sprite index on hover** — display the sprite number of the tile under the cursor (e.g. in the footer status bar, alongside the tile x/y coords)
    - `poke(0x5f57, n)` register controls map stride; changing `mapWidth` reflowss tiles by walking bytes linearly with the new stride (not just masking columns)
    - `TileBrush { tileX, tileY, w, h }` — multi-tile rectangular brush; stamping snaps to brush-sized grid so drag places non-overlapping copies
+   - **TODO: eraser brush** — paint tile 0 (empty) with a configurable size (e.g. 2×2). Clearing tiles one at a time is awkward. Could be a dedicated eraser mode with a size control, or just allow tile 0 to be selected as a brush from the spritesheet.
+   - **TODO: fill tool** — flood fill a region with the current brush tile. Plus a randomised variant that picks randomly from a user-defined set of tiles (e.g. select 4 tiles, fill floods with a random mix of them). Useful for background texture fills.
+   - **TODO: copy/paste block** — select a rectangular region of the map, copy it, paste it elsewhere. Stamp the copied block over any target position.
    - Undo: 50-entry `mapHistory: Uint8Array[]` in App.tsx; push on `onStrokeStart` (mousedown), pop on Ctrl+Z
    - Grid overlay: CSS `linear-gradient` div over the canvas — stays crisp at all zoom levels and doesn't affect PNG export
    - `mapWidth` is stored in `PaletteToolData` and round-trips via the `__pico8_palette_tool__` block
