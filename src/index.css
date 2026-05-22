@@ -36,3 +36,22 @@ body {
 canvas {
   image-rendering: pixelated;
 }
+
+.help-content {
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--p8-white);
+}
+
+.help-content h1 { font-size: 1.6em; font-weight: 700; margin: 0 0 0.75em; }
+.help-content h2 { font-size: 1.25em; font-weight: 700; margin: 1.75em 0 0.5em; color: var(--p8-yellow); }
+.help-content h3 { font-size: 1em; font-weight: 700; margin: 1.25em 0 0.4em; color: var(--p8-light-peach); }
+.help-content p  { margin: 0 0 0.75em; }
+.help-content ul, .help-content ol { margin: 0 0 0.75em 1.5em; }
+.help-content li { margin-bottom: 0.3em; }
+.help-content code { font-family: monospace; font-size: 0.9em; background: rgba(255,255,255,0.1); padding: 0.1em 0.35em; border-radius: 3px; }
+.help-content table { border-collapse: collapse; margin: 0 0 0.75em; }
+.help-content th, .help-content td { border: 1px solid rgba(255,255,255,0.2); padding: 0.35em 0.75em; text-align: left; }
+.help-content th { background: rgba(255,255,255,0.08); }
+.help-content strong { color: var(--p8-white); }
