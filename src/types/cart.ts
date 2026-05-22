@@ -7,6 +7,8 @@ export interface Cart {
   music: string
   label?: Uint8Array   // 128×128 pixels, one color index per byte (0-15 standard, 16-31 secret)
   paletteToolData?: PaletteToolData
+  /** Any __meta:*__ or other unrecognised sections from the original file, preserved verbatim on export */
+  extraSections?: Record<string, string>
 }
 
 export interface PaletteToolData {

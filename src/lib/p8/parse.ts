@@ -3,6 +3,11 @@ import type { Cart, PaletteToolData } from '../../types/cart'
 const TOOL_SECTION = '__meta:pea-ate__'
 const LEGACY_TOOL_SECTION = '__pico8_palette_tool__'
 
+const KNOWN_SECTIONS = new Set([
+  '__lua__', '__gfx__', '__map__', '__sfx__', '__music__', '__label__', '__end__',
+  TOOL_SECTION, LEGACY_TOOL_SECTION,
+])
+
 export function parseP8(text: string): Cart {
   const sections = splitSections(text)
 
@@ -22,6 +27,11 @@ export function parseP8(text: string): Cart {
     }
   }
 
+  const extraSections: Record<string, string> = {}
+  for (const [key, value] of Object.entries(sections)) {
+    if (!KNOWN_SECTIONS.has(key)) extraSections[key] = value
+  }
+
   return {
     version,
     lua: sections['__lua__'] ?? '',
@@ -31,6 +41,7 @@ export function parseP8(text: string): Cart {
     music: sections['__music__'] ?? '',
     label: sections['__label__'] ? parseLabel(sections['__label__']) : undefined,
     paletteToolData,
+    ...(Object.keys(extraSections).length > 0 && { extraSections }),
   }
 }
 

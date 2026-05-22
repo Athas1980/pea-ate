@@ -158,6 +158,20 @@ describe('parse → serialise → parse round-trip', () => {
   })
 })
 
+// ─── Extra section preservation ──────────────────────────────────────────────
+
+describe('extra section preservation', () => {
+  it('round-trips unknown __meta:*__ sections verbatim', () => {
+    const original = makeP8() + '__meta:other-tool__\n{"version":1}\n'
+    const cart = parseP8(original)
+    expect(cart.extraSections?.['__meta:other-tool__']).toContain('{"version":1}')
+    const exported = serialiseP8(cart, IDENTITY_TOOL_DATA)
+    expect(exported).toContain('__meta:other-tool__')
+    const reparsed = parseP8(exported)
+    expect(reparsed.extraSections?.['__meta:other-tool__']).toContain('{"version":1}')
+  })
+})
+
 // ─── generatePalSnippet ───────────────────────────────────────────────────────
 
 describe('generatePalSnippet', () => {

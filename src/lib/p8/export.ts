@@ -18,6 +18,12 @@ export function serialiseP8(cart: Cart, toolData: PaletteToolData): string {
     sections.push(`__label__\n${serialiseLabel(bakedLabel)}`)
   }
 
+  if (cart.extraSections) {
+    for (const [key, value] of Object.entries(cart.extraSections)) {
+      sections.push(`${key}\n${value}`)
+    }
+  }
+
   // labelPalette is cleared in stored data — it has been baked into the label section above
   const storedToolData: PaletteToolData = { ...toolData, labelPalette: {} }
   sections.push(`${TOOL_SECTION}\n${JSON.stringify(storedToolData, null, 2)}`)
