@@ -166,7 +166,7 @@ export default function App() {
           </>
         ) : (
           <div className="flex items-center px-4 opacity-50">
-            <span className="text-[var(--p8-white)]">pico-8 palette tool</span>
+            <span className="text-[var(--p8-white)]">pico-8 cart editor</span>
           </div>
         )}
       </header>

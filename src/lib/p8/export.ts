@@ -1,7 +1,7 @@
 import type { Cart, PaletteToolData } from '../../types/cart'
 import { STANDARD_PALETTE } from '../../types/cart'
 
-const TOOL_SECTION = '__pico8_palette_tool__'
+const TOOL_SECTION = '__meta:pea-ate__'
 
 export function serialiseP8(cart: Cart, toolData: PaletteToolData): string {
   const sections = [

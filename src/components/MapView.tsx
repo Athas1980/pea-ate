@@ -207,7 +207,7 @@ export default function MapView({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2" style={{ minWidth: 'calc(100vw - 320px)' }}>
       {/* Controls row */}
       <div className="flex items-center gap-2">
         <button

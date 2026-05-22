@@ -1,6 +1,7 @@
 import type { Cart, PaletteToolData } from '../../types/cart'
 
-const TOOL_SECTION = '__pico8_palette_tool__'
+const TOOL_SECTION = '__meta:pea-ate__'
+const LEGACY_TOOL_SECTION = '__pico8_palette_tool__'
 
 export function parseP8(text: string): Cart {
   const sections = splitSections(text)
@@ -12,7 +13,7 @@ export function parseP8(text: string): Cart {
   const map = parseMap(sections['__map__'] ?? '', gfx)
 
   let paletteToolData: PaletteToolData | undefined
-  const toolSection = sections[TOOL_SECTION]
+  const toolSection = sections[TOOL_SECTION] ?? sections[LEGACY_TOOL_SECTION]
   if (toolSection) {
     try {
       paletteToolData = JSON.parse(toolSection.trim())
@@ -35,7 +36,7 @@ export function parseP8(text: string): Cart {
 
 function splitSections(text: string): Record<string, string> {
   const result: Record<string, string> = {}
-  const sectionRe = /^(__\w+__)\s*$/gm
+  const sectionRe = /^(__[\w:.-]+__)\s*$/gm
   let match: RegExpExecArray | null
   let lastKey: string | null = null
   let lastIndex = 0

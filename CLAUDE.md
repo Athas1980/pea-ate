@@ -1,6 +1,6 @@
 # pea-ate
 
-A browser-only SPA for loading Pico-8 carts, viewing the spritesheet and map, and swapping palette colours. No backend. Exports modified `.p8` files with palette metadata stored in a custom data block.
+A browser-only SPA for loading Pico-8 carts, viewing and editing the spritesheet and map, swapping palette colours, and inspecting sprites. No backend. Exports modified `.p8` files with palette metadata stored in a custom data block.
 
 ## Stack
 
@@ -33,14 +33,22 @@ src/
 5. **Export `.p8`** — `serialiseP8(cart, toolData)` takes the original cart and the current `PaletteToolData` assembled from live state. Writes `__pico8_palette_tool__` block + bakes label palette into `__label__` data. Also generates `pal()` Lua snippets.
 6. **Round-trip load** — when a cart with a `__pico8_palette_tool__` block is loaded, restore the saved palette mapping and options automatically
 
-**State architecture:** `drawPalette`, `labelPalette`, and `cartOpts` are separate React state in `App.tsx`, not stored on the `cart` object. When exporting, assemble them into a `PaletteToolData` and pass to `serialiseP8`.
+**State architecture:** All working state lives in `App.tsx`, not on the `cart` object. Key pieces: `drawPalette`, `labelPalette`, `cartOpts`, `namedPalettes`, `transparentColours`, `mapData`, `mapWidth`, `storedMapWidth`, `tileBrush`, `mapMode`, `mapHistory`. When exporting, assemble into `PaletteToolData` and pass to `serialiseP8`. `mapData` shadows `cart.map` — edits go to `mapData`, export uses `mapData ?? cart.map`.
 
 ### Planned
-7. **Named palettes** — save multiple palette configurations per cart with user-defined names. When implemented, `PaletteToolData.drawPalette` becomes `namedPalettes: Array<{ name: string; drawPalette: number[] }>` plus an `activePalette` index. The current single `drawPalette` field will migrate to `namedPalettes[0]`.
-8. **Sprite inspector** — the original Electron version had an unfinished SpriteEditor tab: select a grid of sprites from the sheet for closer inspection, with a per-sprite colour chooser. Useful for a palette tool as it lets you focus on the specific sprites affected by a remap. Implementation would involve click/drag selection on the spritesheet canvas to pick a region, then rendering that region at higher zoom alongside the palette editor.
+9. **Composite sprite editor** — a small canvas for composing and previewing multi-tile sprites, with animation playback. Each frame specifies a tile region and/or a named palette. Speed is user-defined in frames at 60 Hz (e.g. 4 = updates 4×/s). Motivated by multi-tile animated sprites in real carts. When implemented: frames stored as `Array<{ tileRegion, namedPaletteIndex? }>`, playback via `requestAnimationFrame`. Canvas rendering reuses the same pixel-stamping as MapView.
 
 ### Implemented
-7. **Drag & drop `.p8.png`** — implemented in `src/lib/p8/stego.ts`. See `.p8.png format` section below for the encoding spec. Lua code is not decompressed (not needed for palette tool). Label is recovered from visual pixels by nearest-colour matching.
+7. **Named palettes** — `PaletteToolData.namedPalettes: Array<{ name: string; drawPalette: number[]; transparentColours: number[] }>`. The active working palette is `drawPalette` state in `App.tsx` (not indexed). Saving a palette appends to the list; applying one copies its values into `drawPalette` and `transparentColours`.
+8. **Sprite inspector** — `SpriteInspector` component. Click/drag on the spritesheet canvas to select a rectangular region; renders it at 4× zoom. Compares against all named palettes to suggest a best match. `onApplyPalette` sets `drawPalette` + `transparentColours` in App.
+9. **Map editor** — tile painting on the map canvas. Key design decisions:
+   - `poke(0x5f57, n)` register controls map stride; changing `mapWidth` reflowss tiles by walking bytes linearly with the new stride (not just masking columns)
+   - `TileBrush { tileX, tileY, w, h }` — multi-tile rectangular brush; stamping snaps to brush-sized grid so drag places non-overlapping copies
+   - Undo: 50-entry `mapHistory: Uint8Array[]` in App.tsx; push on `onStrokeStart` (mousedown), pop on Ctrl+Z
+   - Grid overlay: CSS `linear-gradient` div over the canvas — stays crisp at all zoom levels and doesn't affect PNG export
+   - `mapWidth` is stored in `PaletteToolData` and round-trips via the `__pico8_palette_tool__` block
+   - Poke snippet (`poke(0x5f57, n)`) shown in the footer status bar when width ≠ 128
+10. **Drag & drop `.p8.png`** — implemented in `src/lib/p8/stego.ts`. See `.p8.png format` section below for the encoding spec. Lua code is not decompressed (not needed for palette tool). Label is recovered from visual pixels by nearest-colour matching.
 
 ## `.p8.png` format
 
@@ -89,7 +97,7 @@ __label__
 -- optional 128×128 cart label — uses extended encoding (see Label section below)
 ```
 
-User-defined sections use the same `__name__` pattern and are preserved by Pico-8. Use `__pico8_palette_tool__` as this tool's section name.
+User-defined sections use the same `__name__` pattern. Pico-8 0.2.4c+ preserves sections matching `__meta:*__` — use `__meta:pea-ate__` as this tool's section name. Older-style arbitrary section names (e.g. `__pico8_palette_tool__`) are stripped by Pico-8 on save. The parser accepts both names for backward compatibility. Metadata does **not** survive a `.p8.png` round-trip — the binary format has no slot for custom sections; this is expected.
 
 ### Sprite sheet (`__gfx__`)
 - 128×128 pixels, 4 bits per pixel
