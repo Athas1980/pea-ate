@@ -36,7 +36,8 @@ src/
 **State architecture:** All working state lives in `App.tsx`, not on the `cart` object. Key pieces: `drawPalette`, `labelPalette`, `cartOpts`, `namedPalettes`, `transparentColours`, `mapData`, `mapWidth`, `storedMapWidth`, `tileBrush`, `mapMode`, `mapHistory`. When exporting, assemble into `PaletteToolData` and pass to `serialiseP8`. `mapData` shadows `cart.map` — edits go to `mapData`, export uses `mapData ?? cart.map`.
 
 ### Planned
-9. **Composite sprite editor** — a small canvas for composing and previewing multi-tile sprites, with animation playback. Each frame specifies a tile region and/or a named palette. Speed is user-defined in frames at 60 Hz (e.g. 4 = updates 4×/s). Motivated by multi-tile animated sprites in real carts. When implemented: frames stored as `Array<{ tileRegion, namedPaletteIndex? }>`, playback via `requestAnimationFrame`. Canvas rendering reuses the same pixel-stamping as MapView.
+9. **Help tab** — markdown-based, rendered at build time (preferred: `vite-plugin-markdown`; fallback: `react-markdown` at runtime). Deliberately breaks from the Press Start 2P / Pico-8 aesthetic — use a normal system font at readable size. Scope the font override to the help tab container only. The markdown source should be readable on GitHub directly.
+10. **Composite sprite editor / animation tab** — a small canvas for composing and previewing multi-tile sprites, with animation playback. Each frame specifies a tile region and/or a named palette. Speed is user-defined in frames at 60 Hz (e.g. 4 = updates 4×/s). Motivated by multi-tile animated sprites in real carts. When implemented: frames stored as `Array<{ tileRegion, namedPaletteIndex? }>`, playback via `requestAnimationFrame`. Canvas rendering reuses the same pixel-stamping as MapView. **Note:** before implementing, evaluate whether this replaces the Inspector tab entirely rather than adding alongside it — the animation tab covers most of what the inspector does (region selection, palette preview/apply), and tab proliferation should be avoided.
 
 ### Implemented
 7. **Named palettes** — `PaletteToolData.namedPalettes: Array<{ name: string; drawPalette: number[]; transparentColours: number[] }>`. The active working palette is `drawPalette` state in `App.tsx` (not indexed). Saving a palette appends to the list; applying one copies its values into `drawPalette` and `transparentColours`.
@@ -184,6 +185,23 @@ For secret palette access: `pal(c, 128+n)` remaps draw colour c to secret colour
 - Use `<canvas>` elements directly with `ImageData` for pixel-perfect rendering
 - Scale up with CSS (`image-rendering: pixelated`) rather than canvas scaling — keeps the canvas at native Pico-8 resolution (128×128 for sprites, 128×64 for map in tiles)
 - Map view: each tile is rendered by reading the sprite index from map data and stamping the sprite pixels
+
+## Favicon
+
+`public/favicon.svg` — inline SVG, 32×32, dark-green circle (`#008751`) with "8" in Press Start 2P at 16px. The circle represents the pea (pea → p, 8 → ate); the "p" is implicit. `index.html` already references it via `<link rel="icon" type="image/svg+xml" href="/favicon.svg">`. Note: browser favicons render outside the page context so Press Start 2P falls back to system monospace — acceptable at favicon size.
+
+## Release process
+
+Releases are built locally and attached to GitHub releases as a zip. The `base: './'` in `vite.config.ts` ensures asset paths work when `index.html` is opened directly from the filesystem.
+
+```bash
+npm run build          # produces dist/
+zip -r pea-ate.zip dist/
+gh release create v<x.y.z> pea-ate.zip --title "v<x.y.z>" --notes "..."
+git push
+```
+
+The zip is the offline distribution — users can unzip and open `index.html` in any modern browser without a server or internet connection.
 
 ## Sample cart
 
