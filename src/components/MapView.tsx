@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { STANDARD_PALETTE, SECRET_PALETTE } from '../types/cart'
-import type { TileBrush } from '../types/cart'
+import type { TileBrush, MapToolState } from '../types/cart'
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
@@ -17,12 +17,8 @@ interface Props {
   mode: 'view' | 'edit'
   onModeChange: (mode: 'view' | 'edit') => void
   brush?: TileBrush
-  mapTool?: 'brush' | 'eraser' | 'fill'
-  onToolChange?: (tool: 'brush' | 'eraser' | 'fill') => void
-  eraserSize?: number
-  onEraserSizeChange?: (size: number) => void
-  fillRandom?: boolean
-  onFillRandomChange?: (v: boolean) => void
+  mapTool?: MapToolState
+  onToolChange?: (patch: Partial<MapToolState>) => void
   onStrokeStart?: () => void
   onMapChange?: (newMap: Uint8Array) => void
   onHoverTile?: (tile: { tx: number; ty: number; tileIdx: number } | null) => void
@@ -32,8 +28,7 @@ export default function MapView({
   gfx, map, drawPalette, tileRows, showZeroTile,
   mapWidth = 128, storedMapWidth = 128, onMapWidthChange,
   mode, onModeChange,
-  brush, mapTool = 'brush', onToolChange, eraserSize = 1, onEraserSizeChange,
-  fillRandom = false, onFillRandomChange,
+  brush, mapTool = { tool: 'brush', eraserSize: 1, fillRandom: false }, onToolChange,
   onStrokeStart, onMapChange, onHoverTile,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -77,10 +72,6 @@ export default function MapView({
   showGridRef.current = showGrid
   const mapToolRef = useRef(mapTool)
   mapToolRef.current = mapTool
-  const eraserSizeRef = useRef(eraserSize)
-  eraserSizeRef.current = eraserSize
-  const fillRandomRef = useRef(fillRandom)
-  fillRandomRef.current = fillRandom
   const onHoverTileRef = useRef(onHoverTile)
   onHoverTileRef.current = onHoverTile
 
@@ -129,8 +120,8 @@ export default function MapView({
     const w = mapWidthRef.current
     const total = totalTilesRef.current
 
-    if (mapToolRef.current === 'eraser') {
-      const eSize = eraserSizeRef.current
+    if (mapToolRef.current.tool === 'eraser') {
+      const eSize = mapToolRef.current.eraserSize
       const tx = rawTx
       const ty = rawTy
       if (lastStampTile.current?.tx === tx && lastStampTile.current?.ty === ty) return
@@ -230,7 +221,7 @@ export default function MapView({
   function handleMouseDown(e: React.MouseEvent) {
     if (e.button !== 0) return
     if (mode === 'edit') {
-      if (mapTool === 'fill') {
+      if (mapTool.tool === 'fill') {
         const canvas = canvasRef.current
         if (!canvas || !onMapChange) return
         const rect = canvas.getBoundingClientRect()
@@ -238,7 +229,7 @@ export default function MapView({
         const ty = Math.floor((e.clientY - rect.top) / (8 * zoom))
         const b = brush ?? { tileX: 0, tileY: 0, w: 1, h: 1 }
         let getTile: (tx: number, ty: number) => number
-        if (fillRandom && (b.w > 1 || b.h > 1)) {
+        if (mapTool.fillRandom && (b.w > 1 || b.h > 1)) {
           const tiles: number[] = []
           for (let by = 0; by < b.h; by++)
             for (let bx = 0; bx < b.w; bx++)
@@ -324,23 +315,23 @@ export default function MapView({
             {(['brush', 'eraser', 'fill'] as const).map(tool => (
               <button
                 key={tool}
-                onClick={() => onToolChange?.(tool)}
+                onClick={() => onToolChange?.({ tool })}
                 className={`px-2 py-0.5 border ${
-                  mapTool === tool
+                  mapTool.tool === tool
                     ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
                     : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
                 }`}
               >{tool}</button>
             ))}
-            {mapTool === 'eraser' && (
+            {mapTool.tool === 'eraser' && (
               <>
                 <span className="text-[var(--p8-dark-grey)]">·</span>
                 {[1, 2, 3, 4].map(s => (
                   <button
                     key={s}
-                    onClick={() => onEraserSizeChange?.(s)}
+                    onClick={() => onToolChange?.({ eraserSize: s })}
                     className={`w-6 h-6 border text-center text-sm ${
-                      eraserSize === s
+                      mapTool.eraserSize === s
                         ? 'border-[var(--p8-light-grey)] text-[var(--p8-white)]'
                         : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
                     }`}
@@ -348,13 +339,13 @@ export default function MapView({
                 ))}
               </>
             )}
-            {mapTool === 'fill' && (
+            {mapTool.tool === 'fill' && (
               <>
                 <span className="text-[var(--p8-dark-grey)]">·</span>
                 <button
-                  onClick={() => onFillRandomChange?.(!fillRandom)}
+                  onClick={() => onToolChange?.({ fillRandom: !mapTool.fillRandom })}
                   className={`px-2 py-0.5 border ${
-                    fillRandom
+                    mapTool.fillRandom
                       ? 'border-[var(--p8-light-grey)] text-[var(--p8-white)]'
                       : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
                   }`}

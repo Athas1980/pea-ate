@@ -28,6 +28,13 @@ export interface PaletteToolData {
   mapWidth?: number
 }
 
+/** Active tool state for the map editor. Grouped because these always move together. */
+export interface MapToolState {
+  tool: 'brush' | 'eraser' | 'fill'
+  eraserSize: number
+  fillRandom: boolean
+}
+
 /** A rectangular tile selection on the spritesheet, used as a paint brush for the map editor. */
 export interface TileBrush {
   /** leftmost tile column (0–15) */

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Cart, PaletteToolData, TileBrush } from './types/cart'
+import type { Cart, PaletteToolData, TileBrush, MapToolState } from './types/cart'
 import { parseP8 } from './lib/p8/parse'
 import { serialiseP8 } from './lib/p8/export'
 import { decodePngCart } from './lib/p8/stego'
@@ -42,9 +42,7 @@ export default function App() {
   const [storedMapWidth, setStoredMapWidth] = useState<number>(128)
   const [tileBrush, setTileBrush] = useState<TileBrush>({ tileX: 0, tileY: 0, w: 1, h: 1 })
   const [mapMode, setMapMode] = useState<'view' | 'edit'>('view')
-  const [mapTool, setMapTool] = useState<'brush' | 'eraser' | 'fill'>('brush')
-  const [eraserSize, setEraserSize] = useState<number>(1)
-  const [fillRandom, setFillRandom] = useState(false)
+  const [mapTool, setMapTool] = useState<MapToolState>({ tool: 'brush', eraserSize: 1, fillRandom: false })
   const [hoverMapTile, setHoverMapTile] = useState<{ tx: number; ty: number; tileIdx: number } | null>(null)
   const [, setMapHistory] = useState<Uint8Array[]>([])
   const [showHelp, setShowHelp] = useState(false)
@@ -67,8 +65,7 @@ export default function App() {
     setStoredMapWidth(savedWidth)
     setTileBrush({ tileX: 0, tileY: 0, w: 1, h: 1 })
     setMapMode('view')
-    setMapTool('brush')
-    setFillRandom(false)
+    setMapTool({ tool: 'brush', eraserSize: 1, fillRandom: false })
     setHoverMapTile(null)
     setMapHistory([])
   }
@@ -234,11 +231,7 @@ export default function App() {
                   onModeChange={setMapMode}
                   brush={tileBrush}
                   mapTool={mapTool}
-                  onToolChange={setMapTool}
-                  eraserSize={eraserSize}
-                  onEraserSizeChange={setEraserSize}
-                  fillRandom={fillRandom}
-                  onFillRandomChange={setFillRandom}
+                  onToolChange={patch => setMapTool(prev => ({ ...prev, ...patch }))}
                   onStrokeStart={handleStrokeStart}
                   onMapChange={setMapData}
                   onHoverTile={setHoverMapTile}
