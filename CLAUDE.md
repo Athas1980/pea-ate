@@ -8,7 +8,8 @@ A browser-only SPA for loading Pico-8 carts, viewing and editing the spritesheet
 
 - **React 18 + Vite + TypeScript**
 - **Tailwind CSS v4** for styling
-- **Press Start 2P** (Google Fonts) for the pixel-font Pico-8 aesthetic
+- **Press Start 2P** (Google Fonts) for the pixel-font Pico-8 aesthetic. Each glyph pixel should map to at least one screen pixel — **do not use below 10px**. The global body is set to 8px which is the absolute minimum; prefer 10–12px for any UI text that needs to be readable. Smaller sizes look correct only when screen pixels are physically large (e.g. actual Pico-8 hardware).
+- **Accessibility font option** — planned: a toggle to switch from Press Start 2P to a system sans-serif for users who find pixel fonts hard to read. Scope it to UI chrome only (not canvas rendering).
 - No router needed — tab state (spritesheet / map) is local component state
 - No state management library — React context or prop-drilling is fine at this scale
 

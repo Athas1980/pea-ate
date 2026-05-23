@@ -134,7 +134,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
 
       {/* Top bar */}
       <header className="bg-[var(--p8-red)] flex items-stretch shrink-0">
@@ -200,7 +200,7 @@ export default function App() {
       </header>
 
       {/* Content */}
-      <main className="flex-1 p-4">
+      <main className="flex-1 p-4 overflow-auto">
         {showHelp ? (
           <HelpView />
         ) : !cart ? (
@@ -285,13 +285,13 @@ export default function App() {
       {cart && (
         <footer className="bg-[var(--p8-red)] px-4 py-1.5 flex items-center gap-6 shrink-0">
           <span className="text-[var(--p8-white)] opacity-75">{filename}</span>
-          {tab === 'map' && mapWidth !== 128 && (
-            <span className="text-[var(--p8-white)] opacity-75 font-mono">poke(0x5f57, {mapWidth})</span>
-          )}
           {tab === 'map' && hoverMapTile !== null && (
-            <span className="text-[var(--p8-white)] opacity-75 font-mono ml-auto">
+            <span className="text-[var(--p8-white)] text-xs font-mono">
               {hoverMapTile.tx},{hoverMapTile.ty} · sprite {hoverMapTile.tileIdx}
             </span>
+          )}
+          {tab === 'map' && mapWidth !== 128 && (
+            <span className="text-[var(--p8-white)] text-xs font-mono">poke(0x5f57, {mapWidth})</span>
           )}
         </footer>
       )}

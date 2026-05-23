@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { STANDARD_PALETTE, SECRET_PALETTE } from '../types/cart'
 import type { TileBrush } from '../types/cart'
 
@@ -16,6 +16,7 @@ const CANVAS_H = 128
 export default function TilePicker({ gfx, drawPalette, brush, onBrushChange }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const dragStart = useRef<{ tx: number; ty: number } | null>(null)
+  const [hoverTile, setHoverTile] = useState<{ tx: number; ty: number } | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -65,8 +66,9 @@ export default function TilePicker({ gfx, drawPalette, brush, onBrushChange }: P
   }
 
   function handleMouseMove(e: React.MouseEvent) {
-    if (!(e.buttons & 1) || !dragStart.current) return
     const { tx, ty } = tileAt(e)
+    setHoverTile({ tx, ty })
+    if (!(e.buttons & 1) || !dragStart.current) return
     const { tx: sx, ty: sy } = dragStart.current
     onBrushChange({
       tileX: Math.min(sx, tx),
@@ -92,12 +94,15 @@ export default function TilePicker({ gfx, drawPalette, brush, onBrushChange }: P
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onMouseLeave={() => setHoverTile(null)}
         className="block border border-[var(--p8-dark-grey)] cursor-crosshair select-none"
         style={{ imageRendering: 'pixelated', width: CANVAS_W * ZOOM, height: CANVAS_H * ZOOM }}
       />
-      <p className="text-[var(--p8-dark-grey)] mt-1">
-        {brush.w}×{brush.h} · tile {tileIdx}
-        {brush.w > 1 || brush.h > 1 ? `–${tileIdx + (brush.h - 1) * 16 + brush.w - 1}` : ''}
+      <p className="text-[var(--p8-white)] text-xs font-mono mt-1">
+        {hoverTile
+          ? `${hoverTile.tx},${hoverTile.ty} · sprite ${hoverTile.ty * 16 + hoverTile.tx}`
+          : `${brush.w}×${brush.h} · tile ${tileIdx}${brush.w > 1 || brush.h > 1 ? `–${tileIdx + (brush.h - 1) * 16 + brush.w - 1}` : ''}`
+        }
       </p>
     </div>
   )
