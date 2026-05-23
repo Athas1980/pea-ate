@@ -184,7 +184,15 @@ export default function App() {
         ) : (
           <div className="flex-1" />
         )}
-        <div className="flex items-center px-3">
+        <div className="flex items-center gap-3 px-3">
+          <a
+            href="https://github.com/Athas1980/pea-ate"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--p8-white)] hover:bg-[rgba(0,0,0,0.15)] px-2 py-0.5"
+          >
+            GitHub
+          </a>
           <button
             onClick={() => setShowHelp(v => !v)}
             aria-label="Help"
@@ -300,10 +308,12 @@ export default function App() {
   )
 }
 
-const SAMPLES: { file: string; label: string }[] = [
-  { file: 'adventure-tileset.p8', label: 'adventure tileset' },
-  { file: 'shootinator.p8',       label: 'shootinator' },
+const SAMPLES: { file: string; label: string; author: string; url?: string }[] = [
+  { file: 'adventure-tileset.p8', label: 'Adventure Tileset', author: 'kraizeg', url: 'https://www.lexaloffle.com/bbs/?pid=45481' },
+  { file: 'shootinator.p8',       label: 'Shootinator',       author: 'squidlight' },
 ]
+
+const SUGGEST_URL = 'https://github.com/Athas1980/pea-ate/issues/new?labels=sample-cart&title=Sample+cart+request%3A+%5Bcart+name%5D&body=**Cart+name%3A**+%0A**Author%3A**+%0A**Source+URL%3A**+%0A**License%2Fpermission%3A**+'
 
 function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }) {
   const [dragging, setDragging] = useState(false)
@@ -354,15 +364,34 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
       </button>
       <div className="flex flex-col items-center gap-2">
         {SAMPLES.map(s => (
-          <button
-            key={s.file}
-            onClick={() => loadSample(s.file)}
-            disabled={loadingFile !== null}
-            className="text-[var(--p8-blue)] hover:text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
-          >
-            {loadingFile === s.file ? 'loading...' : s.label}
-          </button>
+          <div key={s.file} className="flex items-center gap-2">
+            <button
+              onClick={() => loadSample(s.file)}
+              disabled={loadingFile !== null}
+              className="text-[var(--p8-blue)] hover:text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
+            >
+              {loadingFile === s.file ? 'loading...' : s.label}
+            </button>
+            <span className="text-[var(--p8-dark-grey)]">by {s.author}</span>
+            {s.url && (
+              <a
+                href={s.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-white)]"
+                title="View source"
+              >↗</a>
+            )}
+          </div>
         ))}
+        <a
+          href={SUGGEST_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-white)] mt-2"
+        >
+          + suggest a sample cart
+        </a>
       </div>
       <input
         ref={inputRef}
