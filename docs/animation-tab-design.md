@@ -10,6 +10,18 @@ The animation tab replaces the Inspector tab. The Inspector's core value (select
 
 ---
 
+## Tab structure changes
+
+This work reorganises responsibilities across tabs:
+
+- **Spritesheet tab** — reduced to setting the project palette only (pick up to 16 of the 32 available colours). No named palettes here.
+- **Palette tab** — goes away. Its responsibilities split: project palette → spritesheet tab, named palettes → animation tab.
+- **Animation tab** — named palettes live here, managed in context. Animations reference named palettes by index. This is where all runtime palette tricks are authored and previewed.
+
+Named palettes only have meaning in the context of animation — moving them here makes that relationship explicit.
+
+---
+
 ## Real use cases (from shootinator)
 
 Three patterns came up that the tool should support, in priority order:
@@ -34,10 +46,10 @@ Pico-8's screen palette (`pal(c, n, 1)`) lets you redefine what colour each inde
 - Multiple screen palette changes mid-game are valid but an advanced edge case — model project palette as set-once for simplicity.
 
 **What this means for pea-ate:**
-- Spritesheet view should render in project palette colours.
-- Palette editor shifts from "remap any of 32" to "first pick your 16, then remap within them."
-- Named palettes become reorderings of a known colour set.
-- Animation frames reference named palettes, which are already constrained to the project colour set.
+- Spritesheet view renders in project palette colours.
+- Spritesheet tab UI reduced to: show 16 colour slots, click a slot to reassign it to any of the 32 available colours.
+- Named palettes are reorderings within the project colour set, managed in the animation tab.
+- Animation frames reference named palettes by index.
 
 The animation tab is downstream of getting project palette right — don't build the tab without addressing this first.
 
@@ -45,8 +57,12 @@ The animation tab is downstream of getting project palette right — don't build
 
 ## Layout
 
+Named palettes sit at the top of the animation tab (exact placement TBD — above the main three-column area). The three-column layout is below:
+
 ```
-┌─────────────────┬─────────────────┬─────────────────┐
+┌─────────────────────────────────────────────────────┐
+│  named palettes: [pal 1] [pal 2] [pal 3] [+ add]   │  ← TBD exact layout
+├─────────────────┬─────────────────┬─────────────────┤
 │  frame 2 of 4   │  spritesheet    │  frames         │
 │                 │                 │                  │
 │  [canvas]       │  [canvas]       │  ┌───────────┐  │
@@ -63,10 +79,27 @@ The animation tab is downstream of getting project palette right — don't build
 └─────────────────────────────────────────────────────┘
 ```
 
+- **Named palettes (top):** create and manage named palettes in context. Placement TBD.
 - **Preview canvas (left):** shows the current frame when stopped; advances during playback. Label at top shows "frame N of M" or "playing".
 - **Spritesheet (middle):** tile picker, same interaction as the map editor.
-- **Frames list (right):** scrollable list of frame cards. Selected frame is highlighted. Clicking a frame always jumps to it, even during playback.
+- **Frames list (right):** scrollable list of frame cards, grouped under a named animation. Selected frame highlighted. Clicking always jumps to it, even during playback.
 - **Footer:** play/stop + constant speed control in game frames (e.g. 4 = updates ~15×/s at 60fps).
+
+---
+
+## Animations
+
+Each animation has a **name** (e.g. "banking", "idle", "explosion") set at creation. Multiple animations can exist in one cart — the frames list is scoped to the currently selected animation. Naming helps when reviewing a project's runtime tricks at a glance.
+
+Data model at the animation level:
+```
+{
+  name: string,
+  mode: 'grid' | 'free',
+  speed: number,           // in game frames
+  // ... grid or free fields below
+}
+```
 
 ---
 
@@ -75,11 +108,11 @@ The animation tab is downstream of getting project palette right — don't build
 ```
 ┌─────────────────────────────[x]┐
 │ frame 2                    [≡] │
-│ [palette]                      │
+│ [palette ▾]                    │
 └────────────────────────────────┘
 ```
 
-- **[palette]** — opens palette picker (constrained to project palette). Quick actions inside: copy from previous frame's palette, reset to project default.
+- **[palette ▾]** — dropdown/picker to select a named palette by index. No colour editing here — that's done in the named palettes section above.
 - **[≡] hamburger** — occasional ops: copy tiles from previous frame, copy palette from previous frame, flip.
 - **[x] top right** — delete frame.
 - **Flip** — mirrors tile layout left-to-right and flips each individual tile. Useful for deriving banked sprite directions from a single drawn direction.
@@ -117,6 +150,9 @@ Mode is chosen at animation creation and never mixed.
 ### Grid mode
 ```
 {
+  name: string,
+  mode: 'grid',
+  speed: number,
   w: number,
   h: number,
   frames: Array<{
@@ -129,9 +165,12 @@ Mode is chosen at animation creation and never mixed.
 ### Free mode
 ```
 {
+  name: string,
+  mode: 'free',
+  speed: number,
   frames: Array<{
     layers: Array<{
-      spriteRegion: { x, y, w, h },  // in sprite-sheet pixels
+      spriteRegion: { x, y, w, h },  // in spritesheet pixels
       x: number,                      // pixel-precise placement
       y: number,
       palette?: number                // index into namedPalettes
