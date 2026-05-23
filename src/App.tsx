@@ -25,7 +25,7 @@ interface CartOpts {
   showZeroTile: boolean
 }
 
-const DEFAULT_OPTS: CartOpts = { useSharedMap: true, showZeroTile: false }
+const DEFAULT_OPTS: CartOpts = { useSharedMap: false, showZeroTile: false }
 
 export default function App() {
   const [cart, setCart] = useState<Cart | null>(null)
@@ -56,8 +56,8 @@ export default function App() {
     setNamedPalettes((loaded.paletteToolData?.namedPalettes ?? []).map(p => ({ ...p, transparentColours: p.transparentColours ?? [] })))
     setTransparentColours(loaded.paletteToolData?.transparentColours ?? [])
     setCartOpts({
-      useSharedMap: loaded.paletteToolData?.useSharedMap ?? true,
-      showZeroTile: loaded.paletteToolData?.showZeroTile ?? false,
+      useSharedMap: loaded.paletteToolData?.useSharedMap ?? DEFAULT_OPTS.useSharedMap,
+      showZeroTile: loaded.paletteToolData?.showZeroTile ?? DEFAULT_OPTS.showZeroTile,
     })
     setMapData(new Uint8Array(loaded.map))
     const savedWidth = loaded.paletteToolData?.mapWidth ?? 128
