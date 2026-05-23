@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# pea-ate
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A browser-only Pico-8 cart editor. Load a `.p8` or `.p8.png` file, view and edit the spritesheet and map, swap palette colours, and export a modified `.p8` with your changes baked in.
 
-Currently, two official plugins are available:
+**[Try it online](https://pea-ate.netlify.app)**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- **Spritesheet view** — renders the 128×128 sprite sheet using the current palette
+- **Map editor** — paint tiles, flood fill, eraser, multi-tile brush, variable map width, undo
+- **Palette editor** — remap any of the 16 draw palette slots to any standard or secret colour; save named palette snapshots
+- **Label view** — view and remap colours in the cart's cover image
+- **Sprite inspector** — select a region of the spritesheet and compare it against saved palettes
+- **Export `.p8`** — writes a `__meta:pea-ate__` block to preserve your palette settings across sessions, and generates `pal()` Lua snippets ready to paste into your cart
+- **Drag & drop** — supports both `.p8` text carts and `.p8.png` steganographic carts
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Running locally
 
-## Expanding the ESLint configuration
+Requires Node.js 18+.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+git clone https://github.com/Athas1980/pea-ate.git
+cd pea-ate
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Then open `http://localhost:5173` in your browser.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Building
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build   # output goes to dist/
 ```
+
+The build uses `base: './'` so `dist/index.html` can be opened directly from the filesystem without a server.
+
+## Sample carts
+
+The bundled sample carts are public domain works by their respective authors. If you'd like your cart included as a sample, [raise an issue](https://github.com/Athas1980/pea-ate/issues/new?labels=sample-cart&title=Sample+cart+request%3A+%5Bcart+name%5D&body=**Cart+name%3A**+%0A**Author%3A**+%0A**Source+URL%3A**+%0A**License%2Fpermission%3A**+).
+
+## Contributing
+
+Bug reports and feature requests welcome via [GitHub Issues](https://github.com/Athas1980/pea-ate/issues).
+
+## Stack
+
+React 18 · TypeScript · Vite · Tailwind CSS v4
