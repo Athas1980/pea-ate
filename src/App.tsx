@@ -138,17 +138,20 @@ export default function App() {
 
       {/* Top bar */}
       <header className="bg-[var(--p8-red)] flex items-stretch shrink-0">
-        <div className="flex items-center px-4 py-2 gap-3">
+        <div className="flex items-center px-4 py-2 gap-3 bg-black m-1 rounded-sm">
           <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <circle cx="16" cy="16" r="16" fill="#008751"/>
             <text x="16" y="19" textAnchor="middle" dominantBaseline="middle" fill="#FFF1E8" fontFamily="'Press Start 2P', monospace" fontSize="16" fontWeight="normal">8</text>
           </svg>
-          <span className="text-[var(--p8-white)] text-xs tracking-widest">pea-ate</span>
+          <div className="flex flex-col leading-tight text-xs">
+            <span>Pea<span className="text-[var(--p8-pink)]">--</span></span>
+            <span><span className="text-[var(--p8-pink)]">--</span>Ate</span>
+          </div>
         </div>
 
         {cart ? (
           <>
-            <nav className="flex items-stretch flex-1">
+            <nav className="flex items-stretch flex-1 animate-[fadeIn_0.2s_ease-out]">
               {tabs.map(t => (
                 <button
                   key={t}
@@ -156,32 +159,30 @@ export default function App() {
                   className={`px-4 py-2 transition-colors ${
                     tab === t && !showHelp
                       ? 'bg-[rgba(0,0,0,0.3)] text-[var(--p8-white)]'
-                      : 'text-[var(--p8-pink)] hover:text-[var(--p8-white)]'
+                      : 'text-[var(--p8-white)] hover:bg-[rgba(0,0,0,0.15)]'
                   }`}
                 >
-                  {t}
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
                 </button>
               ))}
             </nav>
-            <div className="flex items-center gap-4 px-4">
+            <div className="flex items-center gap-4 px-4 animate-[fadeIn_0.2s_ease-out]">
               <button
                 onClick={handleExport}
-                className="text-[var(--p8-white)] opacity-80 hover:opacity-100"
+                className="text-[var(--p8-white)] hover:bg-[rgba(0,0,0,0.15)] px-2 py-1"
               >
-                export .p8
+                Export .p8
               </button>
               <button
                 onClick={() => setCart(null)}
-                className="text-[var(--p8-white)] opacity-40 hover:opacity-100"
+                className="text-[var(--p8-white)] hover:bg-[rgba(0,0,0,0.15)] px-2 py-1"
               >
-                eject
+                Eject
               </button>
             </div>
           </>
         ) : (
-          <div className="flex items-center px-4 flex-1 opacity-50">
-            <span className="text-[var(--p8-white)]">pico-8 cart editor</span>
-          </div>
+          <div className="flex-1" />
         )}
         <div className="flex items-center px-3">
           <button
@@ -190,7 +191,7 @@ export default function App() {
             className={`px-2 py-0.5 border-2 transition-colors ${
               showHelp
                 ? 'border-[var(--p8-white)] bg-[rgba(0,0,0,0.3)] text-[var(--p8-white)]'
-                : 'border-[var(--p8-pink)] text-[var(--p8-pink)] hover:border-[var(--p8-white)] hover:text-[var(--p8-white)]'
+                : 'border-[var(--p8-white)] text-[var(--p8-white)] hover:bg-[rgba(0,0,0,0.15)]'
             }`}
           >
             ?

@@ -37,6 +37,14 @@ canvas {
   image-rendering: pixelated;
 }
 
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 .help-content {
   font-family: system-ui, sans-serif;
   font-size: 14px;
@@ -55,3 +63,8 @@ canvas {
 .help-content th, .help-content td { border: 1px solid rgba(255,255,255,0.2); padding: 0.35em 0.75em; text-align: left; }
 .help-content th { background: rgba(255,255,255,0.08); }
 .help-content strong { color: var(--p8-white); }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

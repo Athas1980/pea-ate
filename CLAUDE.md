@@ -49,9 +49,10 @@ src/
    - `TileBrush { tileX, tileY, w, h }` — multi-tile rectangular brush; stamping snaps to brush-sized grid so drag places non-overlapping copies
    - **Eraser tool** — dedicated eraser mode in the toolbar (brush / eraser / fill), configurable size 1–4. Paints tile 0 with 1-tile drag precision (no grid snap). Size persists across carts.
    - **Fill tool** — flood fill from clicked tile. Pattern mode (default): tiles the brush pattern across the filled region using `(y % h, x % w)` offsets. Random mode: toggle in toolbar, picks randomly from all tiles in the brush selection (only active when brush is multi-tile). Both modes push to undo history.
-   - **Hover status** — tile x,y coords and sprite index shown in footer status bar while hovering over the map canvas. **TODO: not currently working — event firing vs rendering issue, needs JS debugging.**
+   - **Hover status** — tile x,y coords and sprite index shown in footer status bar while hovering over the map canvas.
    - **TODO: copy/paste block** — select a rectangular region of the map, copy it, paste it elsewhere. Stamp the copied block over any target position.
    - Undo: 50-entry `mapHistory: Uint8Array[]` in App.tsx; push on `onStrokeStart` (mousedown), pop on Ctrl+Z
+   - Default zoom is 2× (1× available for wide/dense maps)
    - Grid overlay: CSS `linear-gradient` div over the canvas — stays crisp at all zoom levels and doesn't affect PNG export
    - `mapWidth` is stored in `PaletteToolData` and round-trips via the `__pico8_palette_tool__` block
    - Poke snippet (`poke(0x5f57, n)`) shown in the footer status bar when width ≠ 128

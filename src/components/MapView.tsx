@@ -33,7 +33,7 @@ export default function MapView({
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [zoom, setZoom] = useState(1)
+  const [zoom, setZoom] = useState(2)
   const [showGrid, setShowGrid] = useState(false)
   const [widthInput, setWidthInput] = useState(String(mapWidth))
   const isTypingRef = useRef(false)
@@ -270,7 +270,7 @@ export default function MapView({
   }
 
   return (
-    <div className="flex flex-col gap-2" style={{ minWidth: 'calc(100vw - 320px)' }}>
+    <div className="flex flex-col gap-2 min-w-0" style={{ width: 'fit-content', maxWidth: 'calc(100vw - 280px)' }}>
       {/* Controls row */}
       <div className="flex items-center gap-2">
         <button
@@ -363,7 +363,7 @@ export default function MapView({
 
       {/* Config / status row */}
       <div className="flex items-center gap-2 text-[var(--p8-dark-grey)]">
-        <span>w</span>
+        <span>Width</span>
         <input
           type="number"
           min={1}
@@ -392,10 +392,6 @@ export default function MapView({
             className="hover:text-[var(--p8-light-grey)]"
           >· reset</button>
         )}
-
-        {mode === 'view' && (
-          <span className="ml-auto">drag to pan · shift+scroll →</span>
-        )}
       </div>
 
       <div
@@ -404,7 +400,8 @@ export default function MapView({
         onMouseLeave={() => onHoverTile?.(null)}
         className="overflow-auto select-none"
         style={{
-          maxWidth: 'calc(100vw - 320px)',
+          maxWidth: '100%',
+        width: 'fit-content',
           maxHeight: '75vh',
           cursor: mode === 'edit' ? 'crosshair' : 'grab',
         }}
@@ -435,6 +432,10 @@ export default function MapView({
           )}
         </div>
       </div>
+
+      {mode === 'view' && (
+        <span className="text-[var(--p8-dark-grey)]">drag to pan · shift+scroll →</span>
+      )}
     </div>
   )
 }
