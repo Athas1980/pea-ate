@@ -6,6 +6,7 @@ interface NamedPalette { name: string; drawPalette: number[] }
 interface Props {
   drawPalette: number[]
   onChange: (palette: number[]) => void
+  projectPalette: number[]
   namedPalettes: NamedPalette[]
   onSavePalette: (name: string) => void
   onDeletePalette: (index: number) => void
@@ -14,7 +15,7 @@ interface Props {
   onTransparencyChange: (t: number[]) => void
 }
 
-export default function PaletteEditor({ drawPalette, onChange, namedPalettes, onSavePalette, onDeletePalette, onApplyPalette, transparentColours, onTransparencyChange }: Props) {
+export default function PaletteEditor({ drawPalette, onChange, projectPalette, namedPalettes, onSavePalette, onDeletePalette, onApplyPalette, transparentColours, onTransparencyChange }: Props) {
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
   const [saveName, setSaveName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -23,10 +24,10 @@ export default function PaletteEditor({ drawPalette, onChange, namedPalettes, on
     setSelectedSlot(prev => prev === slot ? null : slot)
   }
 
-  function handleTargetClick(targetIdx: number) {
+  function handleTargetClick(targetSlot: number) {
     if (selectedSlot === null) return
     const next = [...drawPalette]
-    next[selectedSlot] = targetIdx
+    next[selectedSlot] = targetSlot
     onChange(next)
   }
 
@@ -76,13 +77,13 @@ export default function PaletteEditor({ drawPalette, onChange, namedPalettes, on
         <div className="flex flex-col gap-1">
           <span className="text-[var(--p8-light-grey)] mb-1">draw palette</span>
           <div className="grid grid-cols-8 gap-px items-start">
-            {drawPalette.map((targetIdx, slot) => {
-              const remapped = targetIdx !== slot
+            {drawPalette.map((targetSlot, slot) => {
+              const remapped = targetSlot !== slot
               const selected = selectedSlot === slot
               return (
                 <button
                   key={slot}
-                  title={`slot ${slot} → ${targetIdx}`}
+                  title={`slot ${slot} → slot ${targetSlot}`}
                   onClick={() => handleSlotClick(slot)}
                   onContextMenu={e => { e.preventDefault(); if (remapped) resetSlot(slot) }}
                   className="relative flex flex-col items-center gap-0.5 p-0"
@@ -90,7 +91,7 @@ export default function PaletteEditor({ drawPalette, onChange, namedPalettes, on
                   <div
                     className="relative w-6 h-6"
                     style={{
-                      background: resolveHex(targetIdx),
+                      background: resolveHex(projectPalette[targetSlot]),
                       outline: selected ? '2px solid var(--p8-yellow)' : remapped ? '2px solid var(--p8-white)' : '2px solid transparent',
                       outlineOffset: '1px',
                     }}
@@ -110,27 +111,36 @@ export default function PaletteEditor({ drawPalette, onChange, namedPalettes, on
           </div>
         </div>
 
-        {/* Colour picker */}
+        {/* Colour picker — shows project palette slots as targets */}
         {selectedSlot !== null && (
           <div className="flex flex-col gap-1 border border-[var(--p8-dark-grey)] p-2 w-fit self-center">
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-[var(--p8-light-grey)]">
-              slot {selectedSlot} → {drawPalette[selectedSlot] >= 128
-                ? `secret[${drawPalette[selectedSlot] - 128}]`
-                : String(drawPalette[selectedSlot])}
-            </span>
-            <button
-              onClick={() => toggleTransparent(selectedSlot)}
-              className={transparentColours.includes(selectedSlot) ? 'text-[var(--p8-yellow)]' : 'text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'}
-              title="Toggle transparency"
-            >
-              {transparentColours.includes(selectedSlot) ? 'transparent' : 'opaque'}
-            </button>
-          </div>
-          <div className="flex flex-col gap-2">
-            <ColourRow label="standard" colours={STANDARD_PALETTE} startIdx={0}   current={drawPalette[selectedSlot]} onSelect={handleTargetClick} />
-            <ColourRow label="secret"   colours={SECRET_PALETTE}   startIdx={128} current={drawPalette[selectedSlot]} onSelect={handleTargetClick} />
-          </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-[var(--p8-light-grey)]">
+                slot {selectedSlot} → slot {drawPalette[selectedSlot]}
+              </span>
+              <button
+                onClick={() => toggleTransparent(selectedSlot)}
+                className={transparentColours.includes(selectedSlot) ? 'text-[var(--p8-yellow)]' : 'text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'}
+                title="Toggle transparency"
+              >
+                {transparentColours.includes(selectedSlot) ? 'transparent' : 'opaque'}
+              </button>
+            </div>
+            <div className="grid grid-cols-8 gap-px">
+              {projectPalette.map((colourIdx, slotIdx) => (
+                <button
+                  key={slotIdx}
+                  title={`slot ${slotIdx}`}
+                  className="w-6 h-6"
+                  style={{
+                    background: resolveHex(colourIdx),
+                    outline: drawPalette[selectedSlot] === slotIdx ? '2px solid var(--p8-yellow)' : '2px solid transparent',
+                    outlineOffset: '1px',
+                  }}
+                  onClick={() => handleTargetClick(slotIdx)}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -153,8 +163,8 @@ export default function PaletteEditor({ drawPalette, onChange, namedPalettes, on
               title={`Apply "${pal.name}"`}
             >
               <div className="flex gap-px">
-                {pal.drawPalette.slice(0, 8).map((idx, s) => (
-                  <div key={s} className="w-2 h-4" style={{ background: resolveHex(idx) }} />
+                {pal.drawPalette.slice(0, 8).map((slotIdx, s) => (
+                  <div key={s} className="w-2 h-4" style={{ background: resolveHex(projectPalette[slotIdx]) }} />
                 ))}
               </div>
               <span className="text-[var(--p8-light-grey)] ml-1">{pal.name}</span>
@@ -225,29 +235,6 @@ export default function PaletteEditor({ drawPalette, onChange, namedPalettes, on
   )
 }
 
-interface ColourRowProps {
-  label: string; colours: readonly string[]; startIdx: number; current: number; onSelect: (idx: number) => void
-}
-
-function ColourRow({ label, colours, startIdx, current, onSelect }: ColourRowProps) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[var(--p8-light-grey)]">{label}</span>
-      <div className="grid grid-cols-4 gap-px w-fit">
-        {colours.map((hex, i) => {
-          const idx = startIdx + i
-          return (
-            <button key={idx} title={`${label}[${i}] #${idx}`} onClick={() => onSelect(idx)}
-              className="w-6 h-6"
-              style={{ background: hex, outline: current === idx ? '2px solid var(--p8-yellow)' : '2px solid transparent', outlineOffset: '1px' }}
-            />
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 function resolveHex(idx: number): string {
   return idx >= 128 ? SECRET_PALETTE[idx - 128] : STANDARD_PALETTE[idx]
 }
@@ -258,25 +245,12 @@ function rotate(palette: number[]): number[] {
 
 function generateLuaCompact(drawPalette: number[], transparentColours: number[]): string {
   const lines: string[] = []
-
-  const hasStandard = drawPalette.some((v, i) => v !== i && v < 128)
-  const hasSecret   = drawPalette.some(v => v >= 128)
-
-  if (hasStandard && !hasSecret) {
+  if (drawPalette.some((v, i) => v !== i)) {
     lines.push(`pal(split"${rotate(drawPalette).join(',')}")`)
-  } else if (!hasStandard && hasSecret) {
-    lines.push(`pal(split"${rotate(drawPalette).join(',')}",1)`)
-  } else if (hasStandard && hasSecret) {
-    const drawPart   = drawPalette.map((v, i) => v >= 128 ? i : v)
-    const screenPart = drawPalette.map((v, i) => v < 128  ? i : v)
-    lines.push(`pal(split"${rotate(drawPart).join(',')}")`)
-    lines.push(`pal(split"${rotate(screenPart).join(',')}",1)`)
   }
-
   let bitmask = 0
   for (const c of transparentColours) bitmask |= (1 << c)
   if (bitmask !== 1) lines.push(`palt(${bitmask})`)
-
   return lines.join('\n')
 }
 
@@ -285,8 +259,7 @@ function generateLua(drawPalette: number[], transparentColours: number[]): strin
 
   for (let slot = 0; slot < 16; slot++) {
     if (drawPalette[slot] !== slot) {
-      const secret = drawPalette[slot] >= 128
-      lines.push(`pal(${slot},${drawPalette[slot]}${secret ? ',1' : ''})`)
+      lines.push(`pal(${slot},${drawPalette[slot]})`)
     }
   }
 

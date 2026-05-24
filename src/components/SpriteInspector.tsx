@@ -8,6 +8,7 @@ type Rgb = [number, number, number]
 interface Props {
   gfx: Uint8Array
   drawPalette: number[]
+  projectPalette: number[]
   namedPalettes: NamedPalette[]
   transparentColours: number[]
   selection: SpriteRegion
@@ -15,8 +16,8 @@ interface Props {
   onApplyPalette: (palette: number[], transparentColours: number[]) => void
 }
 
-const SHEET_ZOOM = 2   // mini spritesheet display scale
-const TILE = 8         // pixels per sprite tile
+const SHEET_ZOOM = 2
+const TILE = 8
 
 const checkerboard: React.CSSProperties = {
   backgroundImage: 'linear-gradient(45deg, #3a3a3a 25%, transparent 25%, transparent 75%, #3a3a3a 75%), linear-gradient(45deg, #3a3a3a 25%, transparent 25%, transparent 75%, #3a3a3a 75%)',
@@ -25,19 +26,19 @@ const checkerboard: React.CSSProperties = {
   backgroundColor: '#1a1a1a',
 }
 
-export default function SpriteInspector({ gfx, drawPalette, namedPalettes, transparentColours, selection, onSelectionChange, onApplyPalette }: Props) {
+export default function SpriteInspector({ gfx, drawPalette, projectPalette, namedPalettes, transparentColours, selection, onSelectionChange, onApplyPalette }: Props) {
   const sheetRef = useRef<HTMLCanvasElement>(null)
   const zoomRef  = useRef<HTMLCanvasElement>(null)
   const dragging = useRef(false)
   const dragOrigin = useRef<{ tx: number; ty: number } | null>(null)
 
-  // Draw mini spritesheet + selection highlight
   useEffect(() => {
     const canvas = sheetRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
     const imageData = ctx.createImageData(128, 128)
-    const rgb = resolveRgb(drawPalette)
+    const resolved = drawPalette.map(slot => projectPalette[slot])
+    const rgb = resolveRgb(resolved)
 
     for (let py = 0; py < 128; py++) {
       for (let px = 0; px < 128; px++) {
@@ -58,9 +59,8 @@ export default function SpriteInspector({ gfx, drawPalette, namedPalettes, trans
     ctx.strokeStyle = '#ffec27'
     ctx.lineWidth = 1
     ctx.strokeRect(x * TILE + 0.5, y * TILE + 0.5, w * TILE - 1, h * TILE - 1)
-  }, [gfx, drawPalette, transparentColours, selection])
+  }, [gfx, drawPalette, projectPalette, transparentColours, selection])
 
-  // Draw zoomed view of selection with current palette
   useEffect(() => {
     const canvas = zoomRef.current
     if (!canvas) return
@@ -68,8 +68,9 @@ export default function SpriteInspector({ gfx, drawPalette, namedPalettes, trans
     const { x, y, w, h } = selection
     const pw = w * TILE, ph = h * TILE
     canvas.width = pw; canvas.height = ph
-    renderRegion(ctx, gfx, drawPalette, transparentColours, x, y, pw, ph)
-  }, [gfx, drawPalette, transparentColours, selection])
+    const resolved = drawPalette.map(slot => projectPalette[slot])
+    renderRegion(ctx, gfx, resolved, transparentColours, x, y, pw, ph)
+  }, [gfx, drawPalette, projectPalette, transparentColours, selection])
 
   function getTile(e: React.MouseEvent<HTMLCanvasElement>) {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -104,9 +105,7 @@ export default function SpriteInspector({ gfx, drawPalette, namedPalettes, trans
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Top row: mini spritesheet + zoomed view */}
       <div className="flex gap-6 items-start">
-        {/* Mini spritesheet */}
         <div className="flex flex-col gap-2">
           <span className="text-[var(--p8-light-grey)]">spritesheet</span>
           <canvas
@@ -124,7 +123,6 @@ export default function SpriteInspector({ gfx, drawPalette, namedPalettes, trans
           </span>
         </div>
 
-        {/* Zoomed view — fixed 256×256 container so layout never shifts */}
         <div className="flex flex-col gap-2">
           <span className="text-[var(--p8-light-grey)]">selection · {zoomLevel}×</span>
           <div style={{ width: 256, height: 256, display: 'flex', alignItems: 'flex-start', ...checkerboard }}>
@@ -137,7 +135,6 @@ export default function SpriteInspector({ gfx, drawPalette, namedPalettes, trans
         </div>
       </div>
 
-      {/* Thumbnails row — below the canvases, wraps freely */}
       {namedPalettes.length > 0 && (
         <div className="flex flex-col gap-2">
           <span className="text-[var(--p8-light-grey)]">named palettes</span>
@@ -146,7 +143,7 @@ export default function SpriteInspector({ gfx, drawPalette, namedPalettes, trans
               <Thumbnail
                 key={i}
                 name={pal.name}
-                palette={pal.drawPalette}
+                palette={pal.drawPalette.map(slot => projectPalette[slot])}
                 transparentColours={pal.transparentColours}
                 gfx={gfx}
                 selection={selection}
@@ -215,8 +212,8 @@ function renderRegion(
   ctx.putImageData(imageData, 0, 0)
 }
 
-function resolveRgb(drawPalette: number[]): Rgb[] {
-  return drawPalette.map(idx => hexToRgb(idx >= 128 ? SECRET_PALETTE[idx - 128] : STANDARD_PALETTE[idx]))
+function resolveRgb(palette: number[]): Rgb[] {
+  return palette.map(idx => hexToRgb(idx >= 128 ? SECRET_PALETTE[idx - 128] : STANDARD_PALETTE[idx]))
 }
 
 function hexToRgb(hex: string): Rgb {

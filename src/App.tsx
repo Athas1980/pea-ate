@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Cart, PaletteToolData, TileBrush, MapToolState } from './types/cart'
 import { parseP8 } from './lib/p8/parse'
 import { serialiseP8 } from './lib/p8/export'
@@ -21,6 +21,14 @@ interface NamedPalette { name: string; drawPalette: number[]; transparentColours
 
 const IDENTITY_PALETTE = Array.from({ length: 16 }, (_, i) => i)
 const DEFAULT_PROJECT_PALETTE = Array.from({ length: 16 }, (_, i) => i)
+
+function migrateSlotPalette(pal: number[], projectPalette: number[]): number[] {
+  return pal.map((v, i) => {
+    if (v < 16) return v
+    const slot = projectPalette.indexOf(v)
+    return slot >= 0 ? slot : i
+  })
+}
 
 interface CartOpts {
   useSharedMap: boolean
@@ -54,10 +62,17 @@ export default function App() {
     setCart(loaded)
     setFilename(name)
     setTab('spritesheet')
-    setProjectPalette(loaded.paletteToolData?.projectPalette ?? DEFAULT_PROJECT_PALETTE)
-    setDrawPalette(loaded.paletteToolData?.drawPalette ?? IDENTITY_PALETTE)
+    const savedProjectPalette = loaded.paletteToolData?.projectPalette ?? DEFAULT_PROJECT_PALETTE
+    setProjectPalette(savedProjectPalette)
+    setDrawPalette(migrateSlotPalette(loaded.paletteToolData?.drawPalette ?? IDENTITY_PALETTE, savedProjectPalette))
     setLabelPalette(loaded.paletteToolData?.labelPalette ?? {})
-    setNamedPalettes((loaded.paletteToolData?.namedPalettes ?? []).map(p => ({ ...p, transparentColours: p.transparentColours ?? [] })))
+    setNamedPalettes(
+      (loaded.paletteToolData?.namedPalettes ?? []).map(p => ({
+        ...p,
+        drawPalette: migrateSlotPalette(p.drawPalette, savedProjectPalette),
+        transparentColours: p.transparentColours ?? [],
+      }))
+    )
     setTransparentColours(loaded.paletteToolData?.transparentColours ?? [])
     setCartOpts({
       useSharedMap: loaded.paletteToolData?.useSharedMap ?? DEFAULT_OPTS.useSharedMap,
@@ -125,11 +140,17 @@ export default function App() {
     URL.revokeObjectURL(url)
   }
 
+  const resolvedPalette = useMemo(
+    () => drawPalette.map(slot => projectPalette[slot]),
+    [drawPalette, projectPalette]
+  )
+
   const tabs = ['spritesheet', 'map', ...(cart?.label ? ['label'] : []), 'inspector', 'options'] as Tab[]
 
   const paletteEditorProps = {
     drawPalette,
     onChange: setDrawPalette,
+    projectPalette,
     namedPalettes,
     onSavePalette: (name: string) => setNamedPalettes(prev => [...prev, { name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }]),
     onDeletePalette: (i: number) => setNamedPalettes(prev => prev.filter((_, j) => j !== i)),
@@ -235,7 +256,7 @@ export default function App() {
                 <MapView
                   gfx={cart.gfx}
                   map={mapData ?? cart.map}
-                  drawPalette={drawPalette}
+                  drawPalette={resolvedPalette}
                   tileRows={cartOpts.useSharedMap ? 64 : 32}
                   showZeroTile={cartOpts.showZeroTile}
                   mapWidth={mapWidth}
@@ -254,7 +275,7 @@ export default function App() {
                   {mapMode === 'edit' && (
                     <TilePicker
                       gfx={cart.gfx}
-                      drawPalette={drawPalette}
+                      drawPalette={resolvedPalette}
                       brush={tileBrush}
                       onBrushChange={setTileBrush}
                     />
@@ -268,6 +289,7 @@ export default function App() {
                 <SpriteInspector
                   gfx={cart.gfx}
                   drawPalette={drawPalette}
+                  projectPalette={projectPalette}
                   namedPalettes={namedPalettes}
                   transparentColours={transparentColours}
                   selection={spriteSelection}
