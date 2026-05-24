@@ -354,7 +354,8 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
         <span className="text-[var(--p8-light-grey)]">draw palette</span>
 
         {/* Source slot grid */}
-        <div className="grid grid-cols-8 gap-px w-fit">
+        {/* FIXME use common editor*/}
+        <div className="grid grid-cols-16 gap-px w-fit">
           {drawPalette.map((targetSlot, slot) => {
             const remapped = targetSlot !== slot
             const selected = selectedSlot === slot
@@ -409,7 +410,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                 {transparentColours.includes(selectedSlot) ? 'transparent' : 'opaque'}
               </button>
             </div>
-            <div className="grid grid-cols-8 gap-px">
+            <div className="grid grid-cols-16 gap-px">
               {projectPalette.map((colourIdx, slotIdx) => (
                 <button
                   key={slotIdx}
