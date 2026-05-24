@@ -13,12 +13,14 @@ import LabelPaletteEditor from './components/LabelPaletteEditor'
 import SpriteInspector from './components/SpriteInspector'
 import type { SpriteRegion } from './components/SpriteInspector'
 import HelpView from './components/HelpView'
+import ProjectPaletteEditor from './components/ProjectPaletteEditor'
 
 type Tab = 'spritesheet' | 'map' | 'label' | 'options' | 'inspector'
 
 interface NamedPalette { name: string; drawPalette: number[]; transparentColours: number[] }
 
 const IDENTITY_PALETTE = Array.from({ length: 16 }, (_, i) => i)
+const DEFAULT_PROJECT_PALETTE = Array.from({ length: 16 }, (_, i) => i)
 
 interface CartOpts {
   useSharedMap: boolean
@@ -31,6 +33,7 @@ export default function App() {
   const [cart, setCart] = useState<Cart | null>(null)
   const [filename, setFilename] = useState<string>('cart.p8')
   const [tab, setTab] = useState<Tab>('spritesheet')
+  const [projectPalette, setProjectPalette] = useState<number[]>(DEFAULT_PROJECT_PALETTE)
   const [drawPalette, setDrawPalette] = useState<number[]>(IDENTITY_PALETTE)
   const [labelPalette, setLabelPalette] = useState<Record<number, number>>({})
   const [cartOpts, setCartOpts] = useState<CartOpts>(DEFAULT_OPTS)
@@ -51,6 +54,7 @@ export default function App() {
     setCart(loaded)
     setFilename(name)
     setTab('spritesheet')
+    setProjectPalette(loaded.paletteToolData?.projectPalette ?? DEFAULT_PROJECT_PALETTE)
     setDrawPalette(loaded.paletteToolData?.drawPalette ?? IDENTITY_PALETTE)
     setLabelPalette(loaded.paletteToolData?.labelPalette ?? {})
     setNamedPalettes((loaded.paletteToolData?.namedPalettes ?? []).map(p => ({ ...p, transparentColours: p.transparentColours ?? [] })))
@@ -101,6 +105,7 @@ export default function App() {
   function handleExport() {
     if (!cart) return
     const toolData: PaletteToolData = {
+      projectPalette,
       drawPalette,
       labelPalette,
       useSharedMap: cartOpts.useSharedMap,
@@ -219,10 +224,10 @@ export default function App() {
               <div className="flex gap-6 items-start">
                 <SpritesheetView
                   gfx={cart.gfx}
-                  drawPalette={drawPalette}
+                  drawPalette={projectPalette}
                   pixelRows={cartOpts.useSharedMap ? 64 : 128}
                 />
-                <PaletteEditor {...paletteEditorProps} />
+                <ProjectPaletteEditor projectPalette={projectPalette} onChange={setProjectPalette} />
               </div>
             )}
             {tab === 'map' && (

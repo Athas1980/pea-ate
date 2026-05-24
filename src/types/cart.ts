@@ -12,6 +12,8 @@ export interface Cart {
 }
 
 export interface PaletteToolData {
+  /** Screen palette: projectPalette[i] = which Pico-8 colour slot i maps to (0–15 standard, 128–143 secret). Defaults to identity [0..15]. */
+  projectPalette?: number[]
   /** drawPalette[i] = colour index that palette slot i is mapped to (0–15 standard, 128–143 secret) */
   drawPalette: number[]
   /** true = render all 128×64 map tiles (bottom 32 rows share memory with bottom half of gfx) */

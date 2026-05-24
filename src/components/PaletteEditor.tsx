@@ -74,7 +74,7 @@ export default function PaletteEditor({ drawPalette, onChange, namedPalettes, on
       {/* Source slots + picker grouped so picker can centre under the grid */}
       <div className="flex flex-col gap-3 w-fit">
         <div className="flex flex-col gap-1">
-          <span className="text-[var(--p8-light-grey)] mb-1">palette</span>
+          <span className="text-[var(--p8-light-grey)] mb-1">draw palette</span>
           <div className="grid grid-cols-8 gap-px items-start">
             {drawPalette.map((targetIdx, slot) => {
               const remapped = targetIdx !== slot
