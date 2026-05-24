@@ -4,6 +4,7 @@ import type { Animation, AnimationFrame, TileBrush } from '../types/cart'
 import TilePicker from './TilePicker'
 
 const ZOOM = 4
+const STRIP_ZOOM = 2
 const TILE = 8
 const IDENTITY = Array.from({ length: 16 }, (_, i) => i)
 type Rgb = [number, number, number]
@@ -42,6 +43,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
   const [confirmingResize, setConfirmingResize] = useState(false)
   const [exportingGif, setExportingGif] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
+  const [viewMode, setViewMode] = useState<'single' | 'strip'>('single')
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const paintingRef = useRef(false)
@@ -503,17 +505,49 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
         {/* Preview canvas — only when animation active */}
         {anim && frame && !creating && (
           <div className="flex flex-col gap-2 min-w-32">
-            <span className="text-[var(--p8-light-grey)]">{frameLabel}</span>
-            <canvas
-              ref={canvasRef}
-              width={anim.mirror ? canvasW * 2 : canvasW} height={canvasH}
-              onMouseDown={handleCanvasMouseDown}
-              onMouseMove={handleCanvasMouseMove}
-              onMouseUp={handleCanvasMouseUp}
-              onMouseLeave={handleCanvasMouseUp}
-              className={`border border-[var(--p8-dark-grey)] ${playing ? 'cursor-default' : 'cursor-crosshair'}`}
-              style={{ imageRendering: 'pixelated', width: (anim.mirror ? canvasW * 2 : canvasW) * ZOOM, height: canvasH * ZOOM }}
-            />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[var(--p8-light-grey)]">{frameLabel}</span>
+              {anim.frames.length > 1 && (
+                <button
+                  onClick={() => setViewMode(v => v === 'single' ? 'strip' : 'single')}
+                  className={viewMode === 'strip' ? 'text-[var(--p8-yellow)]' : 'text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'}
+                  title={viewMode === 'strip' ? 'Single frame view' : 'Filmstrip view'}
+                >≡</button>
+              )}
+            </div>
+            {viewMode === 'single' ? (
+              <canvas
+                ref={canvasRef}
+                width={anim.mirror ? canvasW * 2 : canvasW} height={canvasH}
+                onMouseDown={handleCanvasMouseDown}
+                onMouseMove={handleCanvasMouseMove}
+                onMouseUp={handleCanvasMouseUp}
+                onMouseLeave={handleCanvasMouseUp}
+                className={`border border-[var(--p8-dark-grey)] ${playing ? 'cursor-default' : 'cursor-crosshair'}`}
+                style={{ imageRendering: 'pixelated', width: (anim.mirror ? canvasW * 2 : canvasW) * ZOOM, height: canvasH * ZOOM }}
+              />
+            ) : (
+              <div className="flex flex-col gap-1">
+                {anim.frames.map((f, fi) => {
+                  const base = (f.palette !== undefined && namedPalettes[f.palette])
+                    ? namedPalettes[f.palette].drawPalette
+                    : IDENTITY
+                  const palette = base.map(slot => projectPalette[slot])
+                  return (
+                    <FilmstripFrame
+                      key={fi}
+                      frame={f}
+                      w={anim.w} h={anim.h}
+                      gfx={gfx}
+                      resolvedPalette={palette}
+                      mirror={anim.mirror ?? false}
+                      active={fi === safeFrameIdx}
+                      onClick={() => { setActiveFrameIdx(fi); setViewMode('single'); setPlaying(false) }}
+                    />
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -698,6 +732,43 @@ function FrameCard({ frameIdx, frame, active, namedPalettes, onClick, onPaletteC
         >↔</button>
       </div>
     </div>
+  )
+}
+
+interface FilmstripFrameProps {
+  frame: AnimationFrame
+  w: number
+  h: number
+  gfx: Uint8Array
+  resolvedPalette: number[]
+  mirror: boolean
+  active: boolean
+  onClick: () => void
+}
+
+function FilmstripFrame({ frame, w, h, gfx, resolvedPalette, mirror, active, onClick }: FilmstripFrameProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const pw = w * TILE, ph = h * TILE
+  const displayW = mirror ? pw * 2 : pw
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    renderFrame(ctx, frame, w, h, gfx, resolvedPalette, mirror)
+  }, [frame, w, h, gfx, resolvedPalette, mirror])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={displayW} height={ph}
+      onClick={onClick}
+      className={`border cursor-pointer ${active
+        ? 'border-[var(--p8-yellow)]'
+        : 'border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]'
+      }`}
+      style={{ imageRendering: 'pixelated', width: displayW * STRIP_ZOOM, height: ph * STRIP_ZOOM }}
+    />
   )
 }
 
