@@ -11,6 +11,22 @@ export interface Cart {
   extraSections?: Record<string, string>
 }
 
+export interface AnimationFrame {
+  tiles: number[]      // flat W×H array of sprite indices
+  palette?: number     // index into namedPalettes
+  flip?: boolean       // render-only: whole frame reversed left-to-right
+}
+
+export interface Animation {
+  name: string
+  mode: 'grid'
+  speed: number        // game frames per animation frame (e.g. 4 ≈ 15fps at 60fps)
+  w: number            // canvas width in tiles
+  h: number            // canvas height in tiles
+  frames: AnimationFrame[]
+  mirror?: boolean     // render-only: left half mirrored onto right half (applies to whole animation)
+}
+
 export interface PaletteToolData {
   /** Screen palette: projectPalette[i] = which Pico-8 colour slot i maps to (0–15 standard, 128–143 secret). Defaults to identity [0..15]. */
   projectPalette?: number[]
@@ -28,6 +44,8 @@ export interface PaletteToolData {
   transparentColours?: number[]
   /** map width in tiles — 0 means 256, defaults to 128 (poke(0x5f57, n)) */
   mapWidth?: number
+  /** saved animations */
+  animations?: Animation[]
 }
 
 /** Active tool state for the map editor. Grouped because these always move together. */

@@ -106,16 +106,19 @@ Data model at the animation level:
 ## Frame card
 
 ```
-┌─────────────────────────────[x]┐
-│ frame 2                    [≡] │
-│ [palette ▾]                    │
-└────────────────────────────────┘
+┌──────────────────────────────────[x]┐
+│ frame 2                         [≡] │
+│ [palette ▾]    [↔] flip  [⊞] mirror │
+└──────────────────────────────────────┘
 ```
 
 - **[palette ▾]** — dropdown/picker to select a named palette by index. No colour editing here — that's done in the named palettes section above.
-- **[≡] hamburger** — occasional ops: copy tiles from previous frame, copy palette from previous frame, flip.
+- **[↔] flip toggle** — render-only flag. Renders the whole frame reversed left-to-right (sprite faces the opposite direction). Does not modify tile data. Maps to `spr(n, x, y, w, h, true)` / `sspr()` flip_x in generated Lua snippets.
+- **[⊞] mirror toggle** — render-only flag. Takes the left half of the canvas, flips it horizontally, and composites it onto the right half (left + left-flipped). Does not modify tile data. Design aid for authoring symmetric sprites (faces, shields, etc.); has no Lua equivalent.
+- **[≡] hamburger** — occasional ops: copy tiles from previous frame, copy palette from previous frame.
 - **[x] top right** — delete frame.
-- **Flip** — mirrors tile layout left-to-right and flips each individual tile. Useful for deriving banked sprite directions from a single drawn direction.
+
+In **free mode**, both flip and mirror are per-layer flags rather than per-frame, since each layer is an independent sprite placement.
 
 ---
 
@@ -157,7 +160,9 @@ Mode is chosen at animation creation and never mixed.
   h: number,
   frames: Array<{
     tiles: number[],        // flat W×H array of sprite indices
-    palette?: number        // index into namedPalettes
+    palette?: number,       // index into namedPalettes
+    flip?: boolean,         // render-only: whole frame reversed left-to-right
+    mirror?: boolean        // render-only: left half mirrored onto right half
   }>
 }
 ```
@@ -173,7 +178,9 @@ Mode is chosen at animation creation and never mixed.
       spriteRegion: { x, y, w, h },  // in spritesheet pixels
       x: number,                      // pixel-precise placement
       y: number,
-      palette?: number                // index into namedPalettes
+      palette?: number,               // index into namedPalettes
+      flip?: boolean,                 // render-only: layer reversed left-to-right
+      mirror?: boolean                // render-only: left half mirrored onto right half
     }>
   }>
 }
@@ -189,6 +196,10 @@ Mode is chosen at animation creation and never mixed.
 ## Lua snippet generation
 
 Deferred — wanted but better added once the tab is built and the exact snippet shapes are clear. Both modes will eventually generate copy-pasteable snippets (grid mode → `spr()`, free mode → `sspr()`), consistent with the existing `pal()` snippet generation.
+
+- `flip=true` will likely map to the flip_x parameter: `spr(n, x, y, w, h, true)` / equivalent sspr() arg — exact snippet TBD, user may provide a reference snippet
+- `mirror` is a render-only design aid with no Lua equivalent — not emitted in snippets
+- **Contiguous sprite optimisation:** if all tiles in a frame form a contiguous rectangular region in the spritesheet, emit a single `spr(n, x, y, w, h)` call rather than iterating — avoids per-tile call overhead at runtime.
 
 ---
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Cart, PaletteToolData, TileBrush, MapToolState } from './types/cart'
+import type { Cart, PaletteToolData, TileBrush, MapToolState, Animation } from './types/cart'
 import { parseP8 } from './lib/p8/parse'
 import { serialiseP8 } from './lib/p8/export'
 import { decodePngCart } from './lib/p8/stego'
@@ -10,12 +10,11 @@ import PaletteEditor from './components/PaletteEditor'
 import CartOptions from './components/CartOptions'
 import LabelView from './components/LabelView'
 import LabelPaletteEditor from './components/LabelPaletteEditor'
-import SpriteInspector from './components/SpriteInspector'
-import type { SpriteRegion } from './components/SpriteInspector'
+import AnimationView from './components/AnimationView'
 import HelpView from './components/HelpView'
 import ProjectPaletteEditor from './components/ProjectPaletteEditor'
 
-type Tab = 'spritesheet' | 'map' | 'label' | 'options' | 'inspector'
+type Tab = 'spritesheet' | 'map' | 'label' | 'animation' | 'options'
 
 interface NamedPalette { name: string; drawPalette: number[]; transparentColours: number[] }
 
@@ -47,7 +46,7 @@ export default function App() {
   const [cartOpts, setCartOpts] = useState<CartOpts>(DEFAULT_OPTS)
   const [namedPalettes, setNamedPalettes] = useState<NamedPalette[]>([])
   const [transparentColours, setTransparentColours] = useState<number[]>([])
-  const [spriteSelection, setSpriteSelection] = useState<SpriteRegion>({ x: 0, y: 0, w: 1, h: 1 })
+  const [animations, setAnimations] = useState<Animation[]>([])
   const [mapData, setMapData] = useState<Uint8Array | null>(null)
   const [mapWidth, setMapWidth] = useState<number>(128)
   const [storedMapWidth, setStoredMapWidth] = useState<number>(128)
@@ -82,6 +81,7 @@ export default function App() {
     const savedWidth = loaded.paletteToolData?.mapWidth ?? 128
     setMapWidth(savedWidth)
     setStoredMapWidth(savedWidth)
+    setAnimations(loaded.paletteToolData?.animations ?? [])
     setTileBrush({ tileX: 0, tileY: 0, w: 1, h: 1 })
     setMapMode('view')
     setMapTool({ tool: 'brush', eraserSize: 1, fillRandom: false })
@@ -128,6 +128,7 @@ export default function App() {
       namedPalettes,
       transparentColours,
       mapWidth,
+      animations,
     }
     const exportCart: Cart = { ...cart, map: mapData ?? cart.map }
     const text = serialiseP8(exportCart, toolData)
@@ -145,7 +146,7 @@ export default function App() {
     [drawPalette, projectPalette]
   )
 
-  const tabs = ['spritesheet', 'map', ...(cart?.label ? ['label'] : []), 'inspector', 'options'] as Tab[]
+  const tabs = ['spritesheet', 'map', ...(cart?.label ? ['label'] : []), 'animation', 'options'] as Tab[]
 
   const paletteEditorProps = {
     drawPalette,
@@ -284,20 +285,19 @@ export default function App() {
                 </div>
               </div>
             )}
-            {tab === 'inspector' && (
-              <div className="flex gap-6 items-start">
-                <SpriteInspector
-                  gfx={cart.gfx}
-                  drawPalette={drawPalette}
-                  projectPalette={projectPalette}
-                  namedPalettes={namedPalettes}
-                  transparentColours={transparentColours}
-                  selection={spriteSelection}
-                  onSelectionChange={setSpriteSelection}
-                  onApplyPalette={(p, t) => { setDrawPalette(p); setTransparentColours(t) }}
-                />
-                <PaletteEditor {...paletteEditorProps} />
-              </div>
+            {tab === 'animation' && (
+              <AnimationView
+                key={filename}
+                gfx={cart.gfx}
+                projectPalette={projectPalette}
+                drawPalette={drawPalette}
+                transparentColours={transparentColours}
+                namedPalettes={namedPalettes}
+                onSaveNamedPalette={name => setNamedPalettes(prev => [...prev, { name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }])}
+                onDeleteNamedPalette={i => setNamedPalettes(prev => prev.filter((_, j) => j !== i))}
+                animations={animations}
+                onAnimationsChange={setAnimations}
+              />
             )}
             {tab === 'label' && cart.label && (
               <div className="flex gap-6 items-start">
