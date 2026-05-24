@@ -291,10 +291,13 @@ export default function App() {
                 gfx={cart.gfx}
                 projectPalette={projectPalette}
                 drawPalette={drawPalette}
+                onDrawPaletteChange={setDrawPalette}
                 transparentColours={transparentColours}
+                onTransparencyChange={setTransparentColours}
                 namedPalettes={namedPalettes}
                 onSaveNamedPalette={name => setNamedPalettes(prev => [...prev, { name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }])}
                 onDeleteNamedPalette={i => setNamedPalettes(prev => prev.filter((_, j) => j !== i))}
+                onApplyNamedPalette={applyNamedPalette}
                 animations={animations}
                 onAnimationsChange={setAnimations}
               />
