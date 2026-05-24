@@ -57,6 +57,7 @@ src/
    - Grid overlay: CSS `linear-gradient` div over the canvas — stays crisp at all zoom levels and doesn't affect PNG export
    - `mapWidth` is stored in `PaletteToolData` and round-trips via the `__pico8_palette_tool__` block
    - Poke snippet (`poke(0x5f57, n)`) shown in the footer status bar when width ≠ 128
+   - **TODO: stabilise poke snippet in status bar** — it jumps around making it hard to copy. Fix its position (e.g. right-align or pin to a dedicated slot) so it stays put.
 10. **Drag & drop `.p8.png`** — implemented in `src/lib/p8/stego.ts`. See `.p8.png format` section below for the encoding spec. Lua code is not decompressed (not needed for palette tool). Label is recovered from visual pixels by nearest-colour matching.
 
 ## `.p8.png` format
