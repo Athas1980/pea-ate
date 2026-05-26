@@ -330,7 +330,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
       }
 
       encoder.finish()
-      const blob = new Blob([encoder.bytes()], { type: 'image/gif' })
+      const blob = new Blob([encoder.bytes().buffer as ArrayBuffer], { type: 'image/gif' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
