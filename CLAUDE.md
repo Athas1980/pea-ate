@@ -108,7 +108,7 @@ __label__
 -- optional 128×128 cart label — uses extended encoding (see Label section below)
 ```
 
-User-defined sections use the same `__name__` pattern. Pico-8 0.2.4c+ preserves sections matching `__meta:*__` — use `__meta:pea-ate__` as this tool's section name. Older-style arbitrary section names (e.g. `__pico8_palette_tool__`) are stripped by Pico-8 on save. The parser accepts both names for backward compatibility. Metadata does **not** survive a `.p8.png` round-trip — the binary format has no slot for custom sections; this is expected.
+User-defined sections use the same `__name__` pattern. Pico-8 0.2.4c+ preserves sections matching `__meta:*__` — use `__meta:pea-ate__` as this tool's section name. Older-style arbitrary section names (e.g. `__pico8_palette_tool__`) are stripped by Pico-8 on save. The parser accepts both names for backward compatibility. **Verified:** loading a pea-ate-exported `.p8` into Pico-8 and saving preserves the `__meta:pea-ate__` block correctly. Metadata does **not** survive a `.p8.png` round-trip — the binary format has no slot for custom sections; this is expected.
 
 ### Sprite sheet (`__gfx__`)
 - 128×128 pixels, 4 bits per pixel

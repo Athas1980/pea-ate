@@ -297,6 +297,10 @@ export default function App() {
                 namedPalettes={namedPalettes}
                 onSaveNamedPalette={name => setNamedPalettes(prev => [...prev, { name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }])}
                 onDeleteNamedPalette={i => setNamedPalettes(prev => prev.filter((_, j) => j !== i))}
+                onDuplicateNamedPalette={i => setNamedPalettes(prev => {
+                  const copy = { ...prev[i], name: prev[i].name + ' copy', drawPalette: [...prev[i].drawPalette], transparentColours: [...prev[i].transparentColours] }
+                  return [...prev.slice(0, i + 1), copy, ...prev.slice(i + 1)]
+                })}
                 onApplyNamedPalette={applyNamedPalette}
                 animations={animations}
                 onAnimationsChange={setAnimations}

@@ -3,8 +3,8 @@ import { STANDARD_PALETTE, SECRET_PALETTE } from '../types/cart'
 import type { Animation, AnimationFrame, TileBrush } from '../types/cart'
 import TilePicker from './TilePicker'
 
-const ZOOM = 4
-const STRIP_ZOOM = 2
+const MIN_ZOOM = 1
+const MAX_ZOOM = 8
 const TILE = 8
 const IDENTITY = Array.from({ length: 16 }, (_, i) => i)
 type Rgb = [number, number, number]
@@ -21,20 +21,17 @@ interface Props {
   namedPalettes: NamedPalette[]
   onSaveNamedPalette: (name: string) => void
   onDeleteNamedPalette: (index: number) => void
+  onDuplicateNamedPalette: (index: number) => void
   onApplyNamedPalette: (index: number) => void
   animations: Animation[]
   onAnimationsChange: (a: Animation[]) => void
 }
 
-export default function AnimationView({ gfx, projectPalette, drawPalette, onDrawPaletteChange, transparentColours, onTransparencyChange, namedPalettes, onSaveNamedPalette, onDeleteNamedPalette, onApplyNamedPalette, animations, onAnimationsChange }: Props) {
+export default function AnimationView({ gfx, projectPalette, drawPalette, onDrawPaletteChange, transparentColours, onTransparencyChange, namedPalettes, onSaveNamedPalette, onDeleteNamedPalette, onDuplicateNamedPalette, onApplyNamedPalette, animations, onAnimationsChange }: Props) {
   const [activeAnimIdx, setActiveAnimIdx] = useState<number | null>(animations.length > 0 ? 0 : null)
   const [activeFrameIdx, setActiveFrameIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [brush, setBrush] = useState<TileBrush>({ tileX: 0, tileY: 0, w: 1, h: 1 })
-  const [creating, setCreating] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newW, setNewW] = useState(1)
-  const [newH, setNewH] = useState(1)
   const [savingPalette, setSavingPalette] = useState(false)
   const [savePaletteName, setSavePaletteName] = useState('')
   const [editName, setEditName] = useState('')
@@ -44,6 +41,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
   const [exportingGif, setExportingGif] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'single' | 'strip'>('single')
+  const [zoom, setZoom] = useState(4)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const paintingRef = useRef(false)
@@ -68,7 +66,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     if (!canvas || !anim || !frame) return
     const ctx = canvas.getContext('2d')!
     renderFrame(ctx, frame, anim.w, anim.h, gfx, resolvedPalette, anim.mirror ?? false)
-  }, [frame, anim, gfx, resolvedPalette])
+  }, [frame, anim, gfx, resolvedPalette, viewMode])
 
   // Playback loop
   useEffect(() => {
@@ -111,8 +109,8 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
   function getTilePos(e: React.MouseEvent<HTMLCanvasElement>) {
     if (!anim) return null
     const rect = canvasRef.current!.getBoundingClientRect()
-    const tx = Math.floor((e.clientX - rect.left) / (TILE * ZOOM))
-    const ty = Math.floor((e.clientY - rect.top) / (TILE * ZOOM))
+    const tx = Math.floor((e.clientX - rect.left) / (TILE * zoom))
+    const ty = Math.floor((e.clientY - rect.top) / (TILE * zoom))
     if (tx < 0 || ty < 0 || tx >= anim.w || ty >= anim.h) return null
     return { tx, ty }
   }
@@ -173,6 +171,15 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     setActiveFrameIdx(anim.frames.length)
   }
 
+  function duplicateFrame(frameIdx: number) {
+    if (activeAnimIdx === null || !anim) return
+    const src = anim.frames[frameIdx]
+    const copy: AnimationFrame = { ...src, tiles: [...src.tiles] }
+    const newFrames = [...anim.frames.slice(0, frameIdx + 1), copy, ...anim.frames.slice(frameIdx + 1)]
+    onAnimationsChange(animations.map((a, i) => i !== activeAnimIdx ? a : { ...a, frames: newFrames }))
+    setActiveFrameIdx(frameIdx + 1)
+  }
+
   function deleteFrame(frameIdx: number) {
     if (activeAnimIdx === null || !anim || anim.frames.length <= 1) return
     onAnimationsChange(animations.map((a, i) =>
@@ -187,17 +194,15 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
   }
 
   function createAnimation() {
-    const name = newName.trim() || `anim ${animations.length + 1}`
+    const name = `anim ${animations.length + 1}`
     const newAnim: Animation = {
-      name, mode: 'grid', speed: 12, w: newW, h: newH,
-      frames: [{ tiles: Array(newW * newH).fill(0) }],
+      name, mode: 'grid', speed: 12, w: 1, h: 1,
+      frames: [{ tiles: [0] }],
     }
     const next = [...animations, newAnim]
     onAnimationsChange(next)
     setActiveAnimIdx(next.length - 1)
     setActiveFrameIdx(0)
-    setCreating(false)
-    setNewName('')
   }
 
   function saveName() {
@@ -443,16 +448,24 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
               <div key={i} className="flex items-center gap-1.5">
                 <button
                   onClick={() => onApplyNamedPalette(i)}
-                  className="flex items-center gap-1 flex-1 text-left hover:opacity-80"
-                  title={`Apply "${pal.name}"`}
+                  className="flex items-center gap-1 text-left hover:opacity-80"
+                  title={`Apply "${pal.name}" to draw palette`}
                 >
                   <div className="flex gap-px">
-                    {pal.drawPalette.slice(0, 8).map((slot, s) => (
+                    {pal.drawPalette.map((slot, s) => (
                       <div key={s} className="w-2 h-4" style={{ background: resolveHex(projectPalette[slot]) }} />
                     ))}
                   </div>
                   <span className="text-[var(--p8-light-grey)] ml-1">{pal.name}</span>
                 </button>
+                {anim && (
+                  <button
+                    onClick={() => updateFrame(activeAnimIdx!, safeFrameIdx, { palette: i })}
+                    className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-green)]"
+                    title={`Set on frame ${safeFrameIdx + 1}`}
+                  >use</button>
+                )}
+                <button onClick={() => onDuplicateNamedPalette(i)} className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]" title="Duplicate palette">⧉</button>
                 <button onClick={() => onDeleteNamedPalette(i)} className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-red)]">×</button>
               </div>
             ))}
@@ -486,34 +499,45 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
         <div className="flex gap-2 items-center flex-wrap">
           {animations.map((a, i) => (
             <button key={i}
-              onClick={() => { setActiveAnimIdx(i); setPlaying(false); setCreating(false) }}
-              className={`px-2 py-0.5 ${activeAnimIdx === i && !creating
+              onClick={() => { setActiveAnimIdx(i); setPlaying(false) }}
+              className={`px-2 py-0.5 ${activeAnimIdx === i
                 ? 'text-[var(--p8-white)] bg-[rgba(255,255,255,0.1)]'
                 : 'text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'
               }`}
             >{a.name}</button>
           ))}
-          {!creating && (
-            <button onClick={() => setCreating(true)} className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]">
-              + new
-            </button>
-          )}
+          <button onClick={createAnimation} className="px-2 py-0.5 border border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]">
+            + new
+          </button>
         </div>
       )}
 
       {/* Main layout — tile picker always visible */}
       <div className="flex gap-6 items-start">
         {/* Preview canvas — only when animation active */}
-        {anim && frame && !creating && (
+        {anim && frame && (
           <div className="flex flex-col gap-2 min-w-32">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[var(--p8-light-grey)]">{frameLabel}</span>
+            <span className="text-[var(--p8-light-grey)]">{frameLabel}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setZoom(z => Math.max(MIN_ZOOM, z - 1))}
+                disabled={zoom === MIN_ZOOM}
+                className="w-6 h-6 text-center text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
+              >-</button>
+              <span className="text-[var(--p8-light-grey)] w-6 text-center">{zoom}×</span>
+              <button
+                onClick={() => setZoom(z => Math.min(MAX_ZOOM, z + 1))}
+                disabled={zoom === MAX_ZOOM}
+                className="w-6 h-6 text-center text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
+              >+</button>
               {anim.frames.length > 1 && (
                 <button
                   onClick={() => setViewMode(v => v === 'single' ? 'strip' : 'single')}
-                  className={viewMode === 'strip' ? 'text-[var(--p8-yellow)]' : 'text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'}
-                  title={viewMode === 'strip' ? 'Single frame view' : 'Filmstrip view'}
-                >≡</button>
+                  className={`px-2 py-0.5 border ${viewMode === 'strip'
+                    ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
+                    : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+                  }`}
+                >strip</button>
               )}
             </div>
             {viewMode === 'single' ? (
@@ -525,7 +549,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                 onMouseUp={handleCanvasMouseUp}
                 onMouseLeave={handleCanvasMouseUp}
                 className={`border border-[var(--p8-dark-grey)] ${playing ? 'cursor-default' : 'cursor-crosshair'}`}
-                style={{ imageRendering: 'pixelated', width: (anim.mirror ? canvasW * 2 : canvasW) * ZOOM, height: canvasH * ZOOM }}
+                style={{ imageRendering: 'pixelated', width: (anim.mirror ? canvasW * 2 : canvasW) * zoom, height: canvasH * zoom }}
               />
             ) : (
               <div className="flex flex-col gap-1">
@@ -543,6 +567,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                       resolvedPalette={palette}
                       mirror={anim.mirror ?? false}
                       active={fi === safeFrameIdx}
+                      zoom={zoom}
                       onClick={() => { setActiveFrameIdx(fi); setViewMode('single'); setPlaying(false) }}
                     />
                   )
@@ -562,34 +587,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
 
         {/* Right column */}
         <div className="flex flex-col gap-2 w-52">
-          {creating ? (
-            <div className="border border-[var(--p8-dark-grey)] p-2 flex flex-col gap-2">
-              <input type="text" value={newName} onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') createAnimation(); if (e.key === 'Escape') setCreating(false) }}
-                placeholder={`anim ${animations.length + 1}`} autoFocus
-                className="bg-transparent border border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-full outline-none focus:border-[var(--p8-yellow)]"
-              />
-              <div className="flex items-center gap-1.5">
-                <span className="text-[var(--p8-dark-grey)]">w</span>
-                <input type="number" min={1} max={8} value={newW}
-                  onFocus={e => e.currentTarget.select()}
-                  onChange={e => setNewW(Math.max(1, Math.min(8, parseInt(e.target.value) || 1)))}
-                  className="bg-transparent border border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-8 outline-none focus:border-[var(--p8-yellow)]"
-                />
-                <span className="text-[var(--p8-dark-grey)]">h</span>
-                <input type="number" min={1} max={8} value={newH}
-                  onFocus={e => e.currentTarget.select()}
-                  onChange={e => setNewH(Math.max(1, Math.min(8, parseInt(e.target.value) || 1)))}
-                  className="bg-transparent border border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-8 outline-none focus:border-[var(--p8-yellow)]"
-                />
-                <span className="text-[var(--p8-dark-grey)]">tiles</span>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={createAnimation} className="text-[var(--p8-green)]">create</button>
-                <button onClick={() => setCreating(false)} className="text-[var(--p8-dark-grey)]">cancel</button>
-              </div>
-            </div>
-          ) : anim ? (
+          {anim ? (
             <>
               <div className="border border-[var(--p8-dark-grey)] p-2 flex flex-col gap-2">
                 <input
@@ -643,6 +641,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                     onClick={() => { setActiveFrameIdx(fi); setPlaying(false) }}
                     onPaletteChange={idx => updateFrame(activeAnimIdx!, fi, { palette: idx })}
                     onFlipToggle={() => updateFrame(activeAnimIdx!, fi, { flip: !f.flip })}
+                    onDuplicate={() => duplicateFrame(fi)}
                     onDelete={() => deleteFrame(fi)}
                     canDelete={anim.frames.length > 1}
                   />
@@ -653,7 +652,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
               </button>
             </>
           ) : (
-            <button onClick={() => setCreating(true)} className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]">
+            <button onClick={createAnimation} className="px-2 py-0.5 border border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]">
               + new animation
             </button>
           )}
@@ -661,11 +660,14 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
       </div>
 
       {/* Footer — only when animation active */}
-      {anim && !creating && (
+      {anim && (
         <div className="flex items-center gap-6 border-t border-[var(--p8-dark-grey)] pt-3">
-          <button onClick={() => setPlaying(p => !p)} className="text-[var(--p8-white)] hover:opacity-80 w-4">
-            {playing ? '■' : '▶'}
-          </button>
+          <button onClick={() => setPlaying(p => !p)}
+            className={`px-2 py-0.5 border ${playing
+              ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
+              : 'border-[var(--p8-white)] text-[var(--p8-white)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+            }`}
+          >{playing ? 'stop' : 'play'}</button>
           <div className="flex items-center gap-3">
             <span className="text-[var(--p8-dark-grey)]">speed</span>
             <input type="range" min={1} max={30} value={anim.speed}
@@ -676,11 +678,14 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
             <span className="text-[var(--p8-dark-grey)]">({Math.round(60 / anim.speed)}fps)</span>
           </div>
           <button onClick={() => updateAnim({ mirror: !anim.mirror })}
-            className={`${anim.mirror ? 'text-[var(--p8-yellow)]' : 'text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'}`}
+            className={`px-2 py-0.5 border ${anim.mirror
+              ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
+              : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+            }`}
           >mirror</button>
           <button onClick={exportGif} disabled={exportingGif}
             className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
-          >{exportingGif ? 'exporting…' : 'export gif'}</button>
+          >{exportingGif ? 'exporting…' : '↓ gif'}</button>
         </div>
       )}
     </div>
@@ -695,11 +700,12 @@ interface FrameCardProps {
   onClick: () => void
   onPaletteChange: (idx: number | undefined) => void
   onFlipToggle: () => void
+  onDuplicate: () => void
   onDelete: () => void
   canDelete: boolean
 }
 
-function FrameCard({ frameIdx, frame, active, namedPalettes, onClick, onPaletteChange, onFlipToggle, onDelete, canDelete }: FrameCardProps) {
+function FrameCard({ frameIdx, frame, active, namedPalettes, onClick, onPaletteChange, onFlipToggle, onDuplicate, onDelete, canDelete }: FrameCardProps) {
   return (
     <div
       onClick={onClick}
@@ -710,23 +716,30 @@ function FrameCard({ frameIdx, frame, active, namedPalettes, onClick, onPaletteC
     >
       <div className="flex items-center justify-between">
         <span className="text-[var(--p8-light-grey)]">frame {frameIdx + 1}</span>
-        {canDelete && (
-          <button onClick={e => { e.stopPropagation(); onDelete() }}
-            className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-red)]"
-          >×</button>
-        )}
+        <div className="flex items-center gap-1.5">
+          <button onClick={e => { e.stopPropagation(); onDuplicate() }}
+            className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]"
+            title="Duplicate frame"
+          >⧉</button>
+          {canDelete && (
+            <button onClick={e => { e.stopPropagation(); onDelete() }}
+              className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-red)]"
+            >×</button>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+        <span className="text-[var(--p8-dark-grey)]">pal</span>
         <select
           value={frame.palette ?? ''}
           onChange={e => onPaletteChange(e.target.value === '' ? undefined : parseInt(e.target.value))}
-          className="bg-[#111] border border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] text-xs px-1 flex-1 min-w-0"
+          className="bg-[#111] border border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] px-1 w-24"
         >
           <option value="">default</option>
           {namedPalettes.map((p, i) => <option key={i} value={i}>{p.name}</option>)}
         </select>
         <button onClick={onFlipToggle} title="Flip"
-          className={`text-xs px-1 border ${frame.flip
+          className={`px-1 border ${frame.flip
             ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
             : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'
           }`}
@@ -744,10 +757,11 @@ interface FilmstripFrameProps {
   resolvedPalette: number[]
   mirror: boolean
   active: boolean
+  zoom: number
   onClick: () => void
 }
 
-function FilmstripFrame({ frame, w, h, gfx, resolvedPalette, mirror, active, onClick }: FilmstripFrameProps) {
+function FilmstripFrame({ frame, w, h, gfx, resolvedPalette, mirror, active, zoom, onClick }: FilmstripFrameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const pw = w * TILE, ph = h * TILE
   const displayW = mirror ? pw * 2 : pw
@@ -768,7 +782,7 @@ function FilmstripFrame({ frame, w, h, gfx, resolvedPalette, mirror, active, onC
         ? 'border-[var(--p8-yellow)]'
         : 'border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]'
       }`}
-      style={{ imageRendering: 'pixelated', width: displayW * STRIP_ZOOM, height: ph * STRIP_ZOOM }}
+      style={{ imageRendering: 'pixelated', width: displayW * zoom, height: ph * zoom }}
     />
   )
 }
