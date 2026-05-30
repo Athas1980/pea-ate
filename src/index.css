@@ -71,8 +71,8 @@ input[type=number] {
 .code-snippet .token.comment    { color: var(--p8-lavender); }
 .code-snippet .token.keyword    { color: var(--p8-green); }
 .code-snippet .token.function   { color: var(--p8-blue); }
-.code-snippet .token.number     { color: var(--p8-orange); }
-.code-snippet .token.string     { color: var(--p8-yellow); }
+.code-snippet .token.number     { color: var(--p8-blue); }
+.code-snippet .token.string     { color: var(--p8-blue); }
 .code-snippet .token.punctuation { color: var(--p8-light-grey); }
 .code-snippet .token.operator   { color: var(--p8-light-grey); }
 
