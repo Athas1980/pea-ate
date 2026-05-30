@@ -908,9 +908,13 @@ function generateAnimSnippet(
     for (let i = 0; i < frames.length; i++) {
       const frame = frames[i]
       const np = frame.palette !== undefined ? namedPalettes[frame.palette] : null
-      if (np) lines.push(`pal(split"${rotatePaletteStr(np.drawPalette, projectPalette)}")  -- ${np.name}`)
+      if (np) {
+        lines.push(`pal(split"${rotatePaletteStr(np.drawPalette, projectPalette)}")  -- ${np.name}`)
+        const bitmask = np.transparentColours.reduce((b, c) => b | (1 << c), 0)
+        if (bitmask !== 1) lines.push(`palt(${bitmask})`)
+      }
       lines.push(`spr(${frame.tiles[0]}, x, y, ${w}, ${h})  -- frame ${i + 1}`)
-      if (np) lines.push('pal()')
+      if (np) lines.push('pal()\npalt()')
       if (i < frames.length - 1) lines.push('')
     }
   } else {
@@ -937,7 +941,10 @@ function generateAnimSnippet(
       lines.push('')
       for (let i = 0; i < frames.length; i++) {
         const np = frames[i].palette !== undefined ? namedPalettes[frames[i].palette!] : null
-        if (np) lines.push(`-- frame ${i + 1}: pal(split"${rotatePaletteStr(np.drawPalette, projectPalette)}")`)
+        if (np) {
+          const bitmask = np.transparentColours.reduce((b, c) => b | (1 << c), 0)
+          lines.push(`-- frame ${i + 1}: pal(split"${rotatePaletteStr(np.drawPalette, projectPalette)}")${bitmask !== 1 ? ` palt(${bitmask})` : ''}`)
+        }
       }
     }
     lines.push('')
