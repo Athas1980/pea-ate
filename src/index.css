@@ -64,6 +64,18 @@ input[type=number] {
 .help-content th { background: rgba(255,255,255,0.08); }
 .help-content strong { color: var(--p8-white); }
 
+/* Code snippet boxes — navy background, Pico-8 token colours */
+.code-snippet {
+  background: var(--p8-dark-blue);
+}
+.code-snippet .token.comment    { color: var(--p8-lavender); }
+.code-snippet .token.keyword    { color: var(--p8-green); }
+.code-snippet .token.function   { color: var(--p8-blue); }
+.code-snippet .token.number     { color: var(--p8-blue); }
+.code-snippet .token.string     { color: var(--p8-blue); }
+.code-snippet .token.punctuation { color: var(--p8-light-grey); }
+.code-snippet .token.operator   { color: var(--p8-light-grey); }
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }

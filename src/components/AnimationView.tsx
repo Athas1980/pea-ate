@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { STANDARD_PALETTE, SECRET_PALETTE } from '../types/cart'
 import type { Animation, AnimationFrame, TileBrush } from '../types/cart'
 import TilePicker from './TilePicker'
+import CodeSnippet from './CodeSnippet'
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 8
@@ -59,6 +60,18 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
       : IDENTITY
     return base.map(slot => projectPalette[slot])
   }, [frame?.palette, projectPalette, namedPalettes])
+
+  const animSnippet = useMemo(() =>
+    anim ? generateAnimSnippet(anim, namedPalettes, projectPalette) : null,
+    [anim, namedPalettes, projectPalette]
+  )
+  const [snippetCopied, setSnippetCopied] = useState(false)
+  function handleSnippetCopy() {
+    if (!animSnippet) return
+    navigator.clipboard.writeText(animSnippet)
+    setSnippetCopied(true)
+    setTimeout(() => setSnippetCopied(false), 1500)
+  }
 
   // Render current frame to canvas
   useEffect(() => {
@@ -355,7 +368,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     <div className="flex flex-col gap-4">
 
       {/* Palette editor */}
-      <div className="flex flex-col gap-2 border-b border-[var(--p8-dark-grey)] pb-4">
+      <div className="flex flex-col gap-2 border-b-2 border-[var(--p8-dark-grey)] pb-4">
         <span className="text-[var(--p8-light-grey)]">draw palette</span>
 
         {/* Source slot grid */}
@@ -399,7 +412,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
 
         {/* Colour picker */}
         {selectedSlot !== null && (
-          <div className="flex flex-col gap-1 border border-[var(--p8-dark-grey)] p-2 w-fit">
+          <div className="flex flex-col gap-1 border-2 border-[var(--p8-dark-grey)] p-2 w-fit">
             <div className="flex items-center justify-between gap-4">
               <span className="text-[var(--p8-light-grey)]">slot {selectedSlot} → {drawPalette[selectedSlot]}</span>
               <button
@@ -482,7 +495,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
               onKeyDown={e => { if (e.key === 'Enter') handleSavePalette(); if (e.key === 'Escape') setSavingPalette(false) }}
               placeholder={`palette ${namedPalettes.length + 1}`}
               autoFocus
-              className="bg-transparent border border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-28 outline-none focus:border-[var(--p8-yellow)]"
+              className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-28 outline-none focus:border-[var(--p8-yellow)]"
             />
             <button onClick={handleSavePalette} className="text-[var(--p8-green)]">save</button>
             <button onClick={() => setSavingPalette(false)} className="text-[var(--p8-dark-grey)]">cancel</button>
@@ -506,7 +519,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
               }`}
             >{a.name}</button>
           ))}
-          <button onClick={createAnimation} className="px-2 py-0.5 border border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]">
+          <button onClick={createAnimation} className="px-2 py-0.5 border-2 border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]">
             + new
           </button>
         </div>
@@ -533,7 +546,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
               {anim.frames.length > 1 && (
                 <button
                   onClick={() => setViewMode(v => v === 'single' ? 'strip' : 'single')}
-                  className={`px-2 py-0.5 border ${viewMode === 'strip'
+                  className={`px-2 py-0.5 border-2 ${viewMode === 'strip'
                     ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
                     : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
                   }`}
@@ -548,7 +561,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                 onMouseMove={handleCanvasMouseMove}
                 onMouseUp={handleCanvasMouseUp}
                 onMouseLeave={handleCanvasMouseUp}
-                className={`border border-[var(--p8-dark-grey)] ${playing ? 'cursor-default' : 'cursor-crosshair'}`}
+                className={`border-2 border-[var(--p8-dark-grey)] ${playing ? 'cursor-default' : 'cursor-crosshair'}`}
                 style={{ imageRendering: 'pixelated', width: (anim.mirror ? canvasW * 2 : canvasW) * zoom, height: canvasH * zoom }}
               />
             ) : (
@@ -589,27 +602,27 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
         <div className="flex flex-col gap-2 w-52">
           {anim ? (
             <>
-              <div className="border border-[var(--p8-dark-grey)] p-2 flex flex-col gap-2">
+              <div className="border-2 border-[var(--p8-dark-grey)] p-2 flex flex-col gap-2">
                 <input
                   type="text"
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
                   onBlur={saveName}
                   onKeyDown={e => { if (e.key === 'Enter') { saveName(); (e.target as HTMLInputElement).blur() } }}
-                  className="bg-transparent border border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-full outline-none focus:border-[var(--p8-yellow)]"
+                  className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-full outline-none focus:border-[var(--p8-yellow)]"
                 />
                 <div className="flex items-center gap-1.5">
                   <span className="text-[var(--p8-dark-grey)]">w</span>
                   <input type="number" min={1} max={8} value={editWStr}
                     onFocus={e => e.currentTarget.select()}
                     onChange={e => { setEditWStr(e.target.value); setConfirmingResize(false) }}
-                    className="bg-transparent border border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-8 outline-none focus:border-[var(--p8-yellow)]"
+                    className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-8 outline-none focus:border-[var(--p8-yellow)]"
                   />
                   <span className="text-[var(--p8-dark-grey)]">h</span>
                   <input type="number" min={1} max={8} value={editHStr}
                     onFocus={e => e.currentTarget.select()}
                     onChange={e => { setEditHStr(e.target.value); setConfirmingResize(false) }}
-                    className="bg-transparent border border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-8 outline-none focus:border-[var(--p8-yellow)]"
+                    className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-8 outline-none focus:border-[var(--p8-yellow)]"
                   />
                   <span className="text-[var(--p8-dark-grey)]">tiles</span>
                 </div>
@@ -652,7 +665,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
               </button>
             </>
           ) : (
-            <button onClick={createAnimation} className="px-2 py-0.5 border border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]">
+            <button onClick={createAnimation} className="px-2 py-0.5 border-2 border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]">
               + new animation
             </button>
           )}
@@ -661,9 +674,9 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
 
       {/* Footer — only when animation active */}
       {anim && (
-        <div className="flex items-center gap-6 border-t border-[var(--p8-dark-grey)] pt-3">
+        <div className="flex items-center gap-6 border-t-2 border-[var(--p8-dark-grey)] pt-3">
           <button onClick={() => setPlaying(p => !p)}
-            className={`px-2 py-0.5 border ${playing
+            className={`px-2 py-0.5 border-2 ${playing
               ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
               : 'border-[var(--p8-white)] text-[var(--p8-white)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
             }`}
@@ -678,7 +691,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
             <span className="text-[var(--p8-dark-grey)]">({Math.round(60 / anim.speed)}fps)</span>
           </div>
           <button onClick={() => updateAnim({ mirror: !anim.mirror })}
-            className={`px-2 py-0.5 border ${anim.mirror
+            className={`px-2 py-0.5 border-2 ${anim.mirror
               ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
               : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
             }`}
@@ -686,6 +699,14 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
           <button onClick={exportGif} disabled={exportingGif}
             className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
           >{exportingGif ? 'exporting…' : '↓ gif'}</button>
+        </div>
+      )}
+
+      {/* Lua export */}
+      {anim && animSnippet && (
+        <div className="flex flex-col gap-2 border-t-2 border-[var(--p8-dark-grey)] pt-3">
+          <span className="text-[var(--p8-light-grey)]">lua</span>
+          <CodeSnippet code={animSnippet} onCopy={handleSnippetCopy} copied={snippetCopied} />
         </div>
       )}
     </div>
@@ -709,7 +730,7 @@ function FrameCard({ frameIdx, frame, active, namedPalettes, onClick, onPaletteC
   return (
     <div
       onClick={onClick}
-      className={`flex flex-col gap-1.5 p-1.5 border cursor-pointer ${active
+      className={`flex flex-col gap-1.5 p-1.5 border-2 cursor-pointer ${active
         ? 'border-[var(--p8-yellow)]'
         : 'border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]'
       }`}
@@ -733,13 +754,13 @@ function FrameCard({ frameIdx, frame, active, namedPalettes, onClick, onPaletteC
         <select
           value={frame.palette ?? ''}
           onChange={e => onPaletteChange(e.target.value === '' ? undefined : parseInt(e.target.value))}
-          className="bg-[#111] border border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] px-1 w-24"
+          className="bg-[#111] border-2 border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] px-1 w-24"
         >
           <option value="">default</option>
           {namedPalettes.map((p, i) => <option key={i} value={i}>{p.name}</option>)}
         </select>
         <button onClick={onFlipToggle} title="Flip"
-          className={`px-1 border ${frame.flip
+          className={`px-1 border-2 ${frame.flip
             ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
             : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'
           }`}
@@ -778,7 +799,7 @@ function FilmstripFrame({ frame, w, h, gfx, resolvedPalette, mirror, active, zoo
       ref={canvasRef}
       width={displayW} height={ph}
       onClick={onClick}
-      className={`border cursor-pointer ${active
+      className={`border-2 cursor-pointer ${active
         ? 'border-[var(--p8-yellow)]'
         : 'border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]'
       }`}
@@ -857,6 +878,73 @@ function mirrorH(data: ImageData, w: number, h: number) {
       for (let c = 0; c < 4; c++) data.data[dst + c] = data.data[src + c]
     }
   }
+}
+
+function isContiguous(tiles: number[], w: number, h: number): boolean {
+  const base = tiles[0]
+  for (let by = 0; by < h; by++)
+    for (let bx = 0; bx < w; bx++)
+      if (tiles[by * w + bx] !== base + by * 16 + bx) return false
+  return true
+}
+
+function rotatePaletteStr(drawPalette: number[], projectPalette: number[]): string {
+  const colours = drawPalette.map(slot => projectPalette[slot])
+  return [...colours.slice(1), colours[0]].join(',')
+}
+
+function generateAnimSnippet(
+  anim: Animation,
+  namedPalettes: { name: string; drawPalette: number[]; transparentColours: number[] }[],
+  projectPalette: number[]
+): string {
+  const { frames, w, h } = anim
+  if (frames.length === 0) return '-- no frames'
+
+  const allContiguous = frames.every(f => isContiguous(f.tiles, w, h))
+  const lines: string[] = []
+
+  if (allContiguous) {
+    for (let i = 0; i < frames.length; i++) {
+      const frame = frames[i]
+      const np = frame.palette !== undefined ? namedPalettes[frame.palette] : null
+      if (np) lines.push(`pal(split"${rotatePaletteStr(np.drawPalette, projectPalette)}")  -- ${np.name}`)
+      lines.push(`spr(${frame.tiles[0]}, x, y, ${w}, ${h})  -- frame ${i + 1}`)
+      if (np) lines.push('pal()')
+      if (i < frames.length - 1) lines.push('')
+    }
+  } else {
+    const varName = anim.name.replace(/\s+/g, '_') + '_frames'
+    lines.push('function multi_spr(x, y, tiles, w, h)')
+    lines.push('  local i=1')
+    lines.push('  for ty=0,h-1 do')
+    lines.push('    for tx=0,w-1 do')
+    lines.push('      spr(tiles[i], x+tx*8, y+ty*8)')
+    lines.push('      i+=1')
+    lines.push('    end')
+    lines.push('  end')
+    lines.push('end')
+    lines.push('')
+    lines.push(`local ${varName} = {`)
+    for (let i = 0; i < frames.length; i++) {
+      const np = frames[i].palette !== undefined ? namedPalettes[frames[i].palette!] : null
+      const comment = np ? `  -- frame ${i + 1} (${np.name})` : `  -- frame ${i + 1}`
+      lines.push(`  {${frames[i].tiles.join(', ')}},${comment}`)
+    }
+    lines.push('}')
+    const hasPalette = frames.some(f => f.palette !== undefined)
+    if (hasPalette) {
+      lines.push('')
+      for (let i = 0; i < frames.length; i++) {
+        const np = frames[i].palette !== undefined ? namedPalettes[frames[i].palette!] : null
+        if (np) lines.push(`-- frame ${i + 1}: pal(split"${rotatePaletteStr(np.drawPalette, projectPalette)}")`)
+      }
+    }
+    lines.push('')
+    lines.push(`-- usage: multi_spr(x, y, ${varName}[frame_idx], ${w}, ${h})`)
+  }
+
+  return lines.join('\n')
 }
 
 function applyResize(oldW: number, oldH: number, newW: number, newH: number, frames: AnimationFrame[]): AnimationFrame[] {

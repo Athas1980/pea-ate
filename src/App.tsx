@@ -13,6 +13,7 @@ import LabelPaletteEditor from './components/LabelPaletteEditor'
 import AnimationView from './components/AnimationView'
 import HelpView from './components/HelpView'
 import ProjectPaletteEditor from './components/ProjectPaletteEditor'
+import CodeSnippet from './components/CodeSnippet'
 
 type Tab = 'spritesheet' | 'map' | 'label' | 'animation' | 'options'
 
@@ -282,6 +283,12 @@ export default function App() {
                     />
                   )}
                   <PaletteEditor {...paletteEditorProps} />
+                  {mapWidth !== 128 && (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[var(--p8-light-grey)]">map width</span>
+                      <CodeSnippet code={`poke(0x5f57, ${mapWidth})`} onCopy={() => navigator.clipboard.writeText(`poke(0x5f57, ${mapWidth})`)} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -331,9 +338,6 @@ export default function App() {
             <span className="text-[var(--p8-white)] text-xs font-mono">
               {hoverMapTile.tx},{hoverMapTile.ty} · sprite {hoverMapTile.tileIdx}
             </span>
-          )}
-          {tab === 'map' && mapWidth !== 128 && (
-            <span className="text-[var(--p8-white)] text-xs font-mono">poke(0x5f57, {mapWidth})</span>
           )}
         </footer>
       )}

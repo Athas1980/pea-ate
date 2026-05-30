@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { STANDARD_PALETTE, SECRET_PALETTE } from '../types/cart'
+import CodeSnippet from './CodeSnippet'
 
 interface Props {
   projectPalette: number[]
@@ -34,6 +35,16 @@ export default function ProjectPaletteEditor({ projectPalette, onChange }: Props
 
   const anyChanged = projectPalette.some((v, i) => v !== i)
 
+  const snippet = useMemo(() => generateProjectPaletteSnippet(projectPalette), [projectPalette])
+  const compact = useMemo(() => generateProjectPaletteCompact(projectPalette), [projectPalette])
+  const [copied, setCopied] = useState<'verbose' | 'compact' | null>(null)
+
+  function handleCopy(which: 'verbose' | 'compact') {
+    navigator.clipboard.writeText(which === 'verbose' ? snippet : compact)
+    setCopied(which)
+    setTimeout(() => setCopied(null), 1500)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 w-fit">
@@ -67,7 +78,7 @@ export default function ProjectPaletteEditor({ projectPalette, onChange }: Props
         </div>
 
         {selectedSlot !== null && (
-          <div className="flex flex-col gap-2 border border-[var(--p8-dark-grey)] p-2 w-fit self-center">
+          <div className="flex flex-col gap-2 border-2 border-[var(--p8-dark-grey)] p-2 w-fit self-center">
             <span className="text-[var(--p8-light-grey)]">
               slot {selectedSlot} → {projectPalette[selectedSlot] >= 128
                 ? `secret[${projectPalette[selectedSlot] - 128}]`
@@ -86,6 +97,18 @@ export default function ProjectPaletteEditor({ projectPalette, onChange }: Props
           reset all
         </button>
       )}
+
+      <div className="flex flex-col gap-3 border-t-2 border-[var(--p8-dark-grey)] pt-3">
+        <span className="text-[var(--p8-light-grey)]">lua (screen palette)</span>
+        {!anyChanged ? (
+          <span className="text-[var(--p8-dark-grey)]">-- default project palette</span>
+        ) : (
+          <>
+            <CodeSnippet code={snippet} label="verbose" onCopy={() => handleCopy('verbose')} copied={copied === 'verbose'} />
+            <CodeSnippet code={compact} label="compact" onCopy={() => handleCopy('compact')} copied={copied === 'compact'} />
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -126,4 +149,24 @@ function ColourRow({ label, colours, startIdx, current, onSelect }: ColourRowPro
 
 function resolveHex(idx: number): string {
   return idx >= 128 ? SECRET_PALETTE[idx - 128] : STANDARD_PALETTE[idx]
+}
+
+function rotate(palette: number[]): number[] {
+  return [...palette.slice(1), palette[0]]
+}
+
+function generateProjectPaletteCompact(projectPalette: number[]): string {
+  return `pal(split"${rotate(projectPalette).join(',')}", 1)`
+}
+
+function generateProjectPaletteSnippet(projectPalette: number[]): string {
+  const lines: string[] = []
+  for (let i = 0; i < 16; i++) {
+    const target = projectPalette[i]
+    if (target === i) continue
+    const from = STANDARD_PALETTE[i]
+    const to = target >= 128 ? SECRET_PALETTE[target - 128] : STANDARD_PALETTE[target]
+    lines.push(`pal(${i}, ${target}, 1)  -- ${from} -> ${to}`)
+  }
+  return lines.length ? lines.join('\n') : '-- default project palette'
 }

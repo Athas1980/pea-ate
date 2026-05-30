@@ -12,7 +12,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@types/prismjs": "^1.26.6",
     "gifenc": "^1.0.3",
+    "prismjs": "^1.30.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },

@@ -56,9 +56,10 @@ src/
    - Default zoom is 2× (1× available for wide/dense maps)
    - Grid overlay: CSS `linear-gradient` div over the canvas — stays crisp at all zoom levels and doesn't affect PNG export
    - `mapWidth` is stored in `PaletteToolData` and round-trips via the `__pico8_palette_tool__` block
-   - Poke snippet (`poke(0x5f57, n)`) shown in the footer status bar when width ≠ 128
-   - **TODO: stabilise poke snippet in status bar** — it jumps around making it hard to copy. Fix its position (e.g. right-align or pin to a dedicated slot) so it stays put.
-   - **TODO: layout robustness** — map view has issues at half-screen width. Test and fix layout under different viewport sizes and zoom levels (known case: 200% browser zoom on high-DPI display causes map view problems at reduced window width).
+   - Poke snippet (`poke(0x5f57, n)`) shown in right panel as a `CodeSnippet` box when width ≠ 128 — click-to-copy, Prism-highlighted
+   - **TODO: layout robustness** — map view has issues at half-screen width. Test and fix layout under different viewport sizes and zoom levels (known case: 4K display at 200% system scaling causes map view problems at reduced window width).
+   - **TODO: copy/paste block** — select a rectangular region of the map, copy it, paste it elsewhere. Stamp the copied block over any target position.
+   - **Code snippets** — `CodeSnippet` component with Prism.js Lua highlighting (including Pico-8 built-ins), navy background, click-to-copy. Used for poke snippet, palette Lua exports, and named palette exports. Project palette uses `pal(c, n, 1)` format; draw palette uses `pal(c, n)` format.
 10. **Drag & drop `.p8.png`** — implemented in `src/lib/p8/stego.ts`. See `.p8.png format` section below for the encoding spec. Lua code is not decompressed (not needed for palette tool). Label is recovered from visual pixels by nearest-colour matching.
 
 ## `.p8.png` format

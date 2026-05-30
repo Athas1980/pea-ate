@@ -289,7 +289,7 @@ export default function MapView({
 
         <button
           onClick={() => onModeChange(mode === 'view' ? 'edit' : 'view')}
-          className={`px-2 py-0.5 border ${
+          className={`px-2 py-0.5 border-2 ${
             mode === 'edit'
               ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
               : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-light-grey)]'
@@ -301,7 +301,7 @@ export default function MapView({
         {mode === 'edit' && (
           <button
             onClick={() => setShowGrid(g => !g)}
-            className={`px-2 py-0.5 border ${
+            className={`px-2 py-0.5 border-2 ${
               showGrid
                 ? 'border-[var(--p8-light-grey)] text-[var(--p8-light-grey)]'
                 : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
@@ -316,7 +316,7 @@ export default function MapView({
               <button
                 key={tool}
                 onClick={() => onToolChange?.({ tool })}
-                className={`px-2 py-0.5 border ${
+                className={`px-2 py-0.5 border-2 ${
                   mapTool.tool === tool
                     ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
                     : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
@@ -330,7 +330,7 @@ export default function MapView({
                   <button
                     key={s}
                     onClick={() => onToolChange?.({ eraserSize: s })}
-                    className={`w-6 h-6 border text-center text-sm ${
+                    className={`w-6 h-6 border-2 text-center text-sm ${
                       mapTool.eraserSize === s
                         ? 'border-[var(--p8-light-grey)] text-[var(--p8-white)]'
                         : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
@@ -344,7 +344,7 @@ export default function MapView({
                 <span className="text-[var(--p8-dark-grey)]">·</span>
                 <button
                   onClick={() => onToolChange?.({ fillRandom: !mapTool.fillRandom })}
-                  className={`px-2 py-0.5 border ${
+                  className={`px-2 py-0.5 border-2 ${
                     mapTool.fillRandom
                       ? 'border-[var(--p8-light-grey)] text-[var(--p8-white)]'
                       : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
@@ -357,7 +357,7 @@ export default function MapView({
 
         <button
           onClick={handleExport}
-          className="ml-auto px-2 py-0.5 text-[var(--p8-white)] border border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]"
+          className="ml-auto px-2 py-0.5 text-[var(--p8-white)] border-2 border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]"
         >export png</button>
       </div>
 
@@ -382,7 +382,7 @@ export default function MapView({
             isTypingRef.current = false
             commitWidth(e.target.value)
           }}
-          className="w-14 bg-[var(--p8-black)] border border-[var(--p8-dark-grey)] text-[var(--p8-white)] px-1 text-center"
+          className="w-14 bg-[var(--p8-black)] border-2 border-[var(--p8-dark-grey)] text-[var(--p8-white)] px-1 text-center"
         />
         <span>· {displayRows} rows</span>
 
@@ -398,7 +398,7 @@ export default function MapView({
         ref={scrollRef}
         onMouseDown={handleMouseDown}
         onMouseLeave={() => onHoverTile?.(null)}
-        className="overflow-auto select-none"
+        className="overflow-auto select-none border-2 border-[var(--p8-dark-grey)]"
         style={{
           maxWidth: '100%',
         width: 'fit-content',
@@ -411,7 +411,7 @@ export default function MapView({
             ref={canvasRef}
             width={canvasW}
             height={canvasH}
-            className="border border-[var(--p8-dark-grey)] block"
+            className="block"
             style={{
               imageRendering: 'pixelated',
               width: canvasW * zoom,
@@ -423,8 +423,8 @@ export default function MapView({
               className="absolute inset-0 pointer-events-none"
               style={{
                 backgroundImage: [
-                  'linear-gradient(to right, rgba(0,0,0,0.4) 1px, transparent 1px)',
-                  'linear-gradient(to bottom, rgba(0,0,0,0.4) 1px, transparent 1px)',
+                  'linear-gradient(to right, rgba(255,255,255,0.15) 1px, transparent 1px)',
+                  'linear-gradient(to bottom, rgba(255,255,255,0.15) 1px, transparent 1px)',
                 ].join(', '),
                 backgroundSize: `${8 * zoom}px ${8 * zoom}px`,
               }}

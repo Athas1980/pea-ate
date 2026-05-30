@@ -17,6 +17,9 @@ function markdownPlugin(): Plugin {
 export default defineConfig({
   base: './',
   plugins: [react(), tailwindcss(), markdownPlugin()],
+  server: {
+    allowedHosts: ['bazzite.local'],
+  },
   test: {
     environment: 'node',
   },

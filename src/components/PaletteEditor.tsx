@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { STANDARD_PALETTE, SECRET_PALETTE } from '../types/cart'
+import CodeSnippet from './CodeSnippet'
 
 interface NamedPalette { name: string; drawPalette: number[] }
 
@@ -62,10 +63,15 @@ export default function PaletteEditor({ drawPalette, onChange, projectPalette, n
 
   const luaSnippet = useMemo(() => generateLua(drawPalette, transparentColours), [drawPalette, transparentColours])
   const luaCompact  = useMemo(() => generateLuaCompact(drawPalette, transparentColours), [drawPalette, transparentColours])
-  const [copied, setCopied] = useState<'verbose' | 'compact' | null>(null)
+  const [copied, setCopied] = useState<'verbose' | 'compact' | 'array' | 'keyed' | null>(null)
 
-  function handleCopy(which: 'verbose' | 'compact') {
-    navigator.clipboard.writeText(which === 'verbose' ? luaSnippet : luaCompact)
+  function handleCopy(which: 'verbose' | 'compact' | 'array' | 'keyed') {
+    let text = ''
+    if (which === 'verbose') text = luaSnippet
+    else if (which === 'compact') text = luaCompact
+    else if (which === 'array') text = generateNamedPalettesArray(namedPalettes, projectPalette)
+    else text = generateNamedPalettesKeyed(namedPalettes, projectPalette)
+    navigator.clipboard.writeText(text)
     setCopied(which)
     setTimeout(() => setCopied(null), 1500)
   }
@@ -113,7 +119,7 @@ export default function PaletteEditor({ drawPalette, onChange, projectPalette, n
 
         {/* Colour picker — shows project palette slots as targets */}
         {selectedSlot !== null && (
-          <div className="flex flex-col gap-1 border border-[var(--p8-dark-grey)] p-2 w-fit self-center">
+          <div className="flex flex-col gap-1 border-2 border-[var(--p8-dark-grey)] p-2 w-fit self-center">
             <div className="flex items-center justify-between gap-4">
               <span className="text-[var(--p8-light-grey)]">
                 slot {selectedSlot} → slot {drawPalette[selectedSlot]}
@@ -152,7 +158,7 @@ export default function PaletteEditor({ drawPalette, onChange, projectPalette, n
       )}
 
       {/* Named palettes */}
-      <div className="flex flex-col gap-2 border-t border-[var(--p8-dark-grey)] pt-3">
+      <div className="flex flex-col gap-2 border-t-2 border-[var(--p8-dark-grey)] pt-3">
         <span className="text-[var(--p8-light-grey)]">named palettes</span>
 
         {namedPalettes.map((pal, i) => (
@@ -186,7 +192,7 @@ export default function PaletteEditor({ drawPalette, onChange, projectPalette, n
               onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setSaving(false) }}
               placeholder={`palette ${namedPalettes.length + 1}`}
               autoFocus
-              className="bg-transparent border border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-28 outline-none focus:border-[var(--p8-yellow)]"
+              className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-28 outline-none focus:border-[var(--p8-yellow)]"
             />
             <button onClick={handleSave} className="text-[var(--p8-green)]">save</button>
             <button onClick={() => setSaving(false)} className="text-[var(--p8-dark-grey)]">cancel</button>
@@ -201,33 +207,24 @@ export default function PaletteEditor({ drawPalette, onChange, projectPalette, n
         )}
       </div>
 
+      {/* Named palette export */}
+      {namedPalettes.length > 0 && (
+        <div className="flex flex-col gap-3 border-t-2 border-[var(--p8-dark-grey)] pt-3">
+          <span className="text-[var(--p8-light-grey)]">export palettes</span>
+          <CodeSnippet code={generateNamedPalettesArray(namedPalettes, projectPalette)} label="array" onCopy={() => handleCopy('array')} copied={copied === 'array'} />
+          <CodeSnippet code={generateNamedPalettesKeyed(namedPalettes, projectPalette)} label="keyed" onCopy={() => handleCopy('keyed')} copied={copied === 'keyed'} />
+        </div>
+      )}
+
       {/* Lua snippet */}
-      <div className="flex flex-col gap-3 border-t border-[var(--p8-dark-grey)] pt-3">
+      <div className="flex flex-col gap-3 border-t-2 border-[var(--p8-dark-grey)] pt-3">
         <span className="text-[var(--p8-light-grey)]">lua</span>
         {!luaSnippet && !luaCompact ? (
           <span className="text-[var(--p8-dark-grey)]">-- default palette</span>
         ) : (
           <>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[var(--p8-dark-grey)]">verbose</span>
-                <button
-                  onClick={() => handleCopy('verbose')}
-                  className={copied === 'verbose' ? 'text-[var(--p8-green)]' : 'text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]'}
-                >{copied === 'verbose' ? 'copied!' : 'copy'}</button>
-              </div>
-              <pre className="text-[var(--p8-light-grey)] leading-relaxed whitespace-pre-wrap">{luaSnippet || '-- default palette'}</pre>
-            </div>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[var(--p8-dark-grey)]">compact</span>
-                <button
-                  onClick={() => handleCopy('compact')}
-                  className={copied === 'compact' ? 'text-[var(--p8-green)]' : 'text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]'}
-                >{copied === 'compact' ? 'copied!' : 'copy'}</button>
-              </div>
-              <pre className="text-[var(--p8-light-grey)] leading-relaxed whitespace-pre-wrap">{luaCompact || '-- default palette'}</pre>
-            </div>
+            <CodeSnippet code={luaSnippet || '-- default palette'} label="verbose" onCopy={() => handleCopy('verbose')} copied={copied === 'verbose'} />
+            <CodeSnippet code={luaCompact || '-- default palette'} label="compact" onCopy={() => handleCopy('compact')} copied={copied === 'compact'} />
           </>
         )}
       </div>
@@ -241,6 +238,28 @@ function resolveHex(idx: number): string {
 
 function rotate(palette: number[]): number[] {
   return [...palette.slice(1), palette[0]]
+}
+
+function generateNamedPalettesArray(namedPalettes: { name: string; drawPalette: number[] }[], projectPalette: number[]): string {
+  const lines = ['local pals = {']
+  for (const p of namedPalettes) {
+    const colours = p.drawPalette.map(slot => projectPalette[slot])
+    lines.push(`  split"${rotate(colours).join(',')}",  -- ${p.name}`)
+  }
+  lines.push('}')
+  const indices = namedPalettes.map((p, i) => `-- pal(pals[${i + 1}])  -- ${p.name}`).join('\n')
+  lines.push(indices)
+  return lines.join('\n')
+}
+
+function generateNamedPalettesKeyed(namedPalettes: { name: string; drawPalette: number[] }[], projectPalette: number[]): string {
+  const lines = ['local pals = {}']
+  for (const p of namedPalettes) {
+    const colours = p.drawPalette.map(slot => projectPalette[slot])
+    lines.push(`pals["${p.name}"] = split"${rotate(colours).join(',')}"`)
+  }
+  lines.push(`-- usage: pal(pals["name"])`)
+  return lines.join('\n')
 }
 
 function generateLuaCompact(drawPalette: number[], transparentColours: number[]): string {
