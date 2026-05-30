@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { STANDARD_PALETTE, SECRET_PALETTE } from '../types/cart'
 import type { Animation, AnimationFrame, TileBrush } from '../types/cart'
 import TilePicker from './TilePicker'
+import CodeSnippet from './CodeSnippet'
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 8
@@ -59,6 +60,18 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
       : IDENTITY
     return base.map(slot => projectPalette[slot])
   }, [frame?.palette, projectPalette, namedPalettes])
+
+  const animSnippet = useMemo(() =>
+    anim ? generateAnimSnippet(anim, namedPalettes, projectPalette) : null,
+    [anim, namedPalettes, projectPalette]
+  )
+  const [snippetCopied, setSnippetCopied] = useState(false)
+  function handleSnippetCopy() {
+    if (!animSnippet) return
+    navigator.clipboard.writeText(animSnippet)
+    setSnippetCopied(true)
+    setTimeout(() => setSnippetCopied(false), 1500)
+  }
 
   // Render current frame to canvas
   useEffect(() => {
@@ -688,6 +701,14 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
           >{exportingGif ? 'exporting…' : '↓ gif'}</button>
         </div>
       )}
+
+      {/* Lua export */}
+      {anim && animSnippet && (
+        <div className="flex flex-col gap-2 border-t-2 border-[var(--p8-dark-grey)] pt-3">
+          <span className="text-[var(--p8-light-grey)]">lua</span>
+          <CodeSnippet code={animSnippet} onCopy={handleSnippetCopy} copied={snippetCopied} />
+        </div>
+      )}
     </div>
   )
 }
@@ -857,6 +878,73 @@ function mirrorH(data: ImageData, w: number, h: number) {
       for (let c = 0; c < 4; c++) data.data[dst + c] = data.data[src + c]
     }
   }
+}
+
+function isContiguous(tiles: number[], w: number, h: number): boolean {
+  const base = tiles[0]
+  for (let by = 0; by < h; by++)
+    for (let bx = 0; bx < w; bx++)
+      if (tiles[by * w + bx] !== base + by * 16 + bx) return false
+  return true
+}
+
+function rotatePaletteStr(drawPalette: number[], projectPalette: number[]): string {
+  const colours = drawPalette.map(slot => projectPalette[slot])
+  return [...colours.slice(1), colours[0]].join(',')
+}
+
+function generateAnimSnippet(
+  anim: Animation,
+  namedPalettes: { name: string; drawPalette: number[]; transparentColours: number[] }[],
+  projectPalette: number[]
+): string {
+  const { frames, w, h } = anim
+  if (frames.length === 0) return '-- no frames'
+
+  const allContiguous = frames.every(f => isContiguous(f.tiles, w, h))
+  const lines: string[] = []
+
+  if (allContiguous) {
+    for (let i = 0; i < frames.length; i++) {
+      const frame = frames[i]
+      const np = frame.palette !== undefined ? namedPalettes[frame.palette] : null
+      if (np) lines.push(`pal(split"${rotatePaletteStr(np.drawPalette, projectPalette)}")  -- ${np.name}`)
+      lines.push(`spr(${frame.tiles[0]}, x, y, ${w}, ${h})  -- frame ${i + 1}`)
+      if (np) lines.push('pal()')
+      if (i < frames.length - 1) lines.push('')
+    }
+  } else {
+    const varName = anim.name.replace(/\s+/g, '_') + '_frames'
+    lines.push('function multi_spr(x, y, tiles, w, h)')
+    lines.push('  local i=1')
+    lines.push('  for ty=0,h-1 do')
+    lines.push('    for tx=0,w-1 do')
+    lines.push('      spr(tiles[i], x+tx*8, y+ty*8)')
+    lines.push('      i+=1')
+    lines.push('    end')
+    lines.push('  end')
+    lines.push('end')
+    lines.push('')
+    lines.push(`local ${varName} = {`)
+    for (let i = 0; i < frames.length; i++) {
+      const np = frames[i].palette !== undefined ? namedPalettes[frames[i].palette!] : null
+      const comment = np ? `  -- frame ${i + 1} (${np.name})` : `  -- frame ${i + 1}`
+      lines.push(`  {${frames[i].tiles.join(', ')}},${comment}`)
+    }
+    lines.push('}')
+    const hasPalette = frames.some(f => f.palette !== undefined)
+    if (hasPalette) {
+      lines.push('')
+      for (let i = 0; i < frames.length; i++) {
+        const np = frames[i].palette !== undefined ? namedPalettes[frames[i].palette!] : null
+        if (np) lines.push(`-- frame ${i + 1}: pal(split"${rotatePaletteStr(np.drawPalette, projectPalette)}")`)
+      }
+    }
+    lines.push('')
+    lines.push(`-- usage: multi_spr(x, y, ${varName}[frame_idx], ${w}, ${h})`)
+  }
+
+  return lines.join('\n')
 }
 
 function applyResize(oldW: number, oldH: number, newW: number, newH: number, frames: AnimationFrame[]): AnimationFrame[] {
