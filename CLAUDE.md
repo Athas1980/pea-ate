@@ -57,8 +57,11 @@ src/
    - Grid overlay: CSS `linear-gradient` div over the canvas — stays crisp at all zoom levels and doesn't affect PNG export
    - `mapWidth` is stored in `PaletteToolData` and round-trips via the `__pico8_palette_tool__` block
    - Poke snippet (`poke(0x5f57, n)`) shown in the footer status bar when width ≠ 128
-   - **TODO: stabilise poke snippet in status bar** — it jumps around making it hard to copy. Fix its position (e.g. right-align or pin to a dedicated slot) so it stays put.
-   - **TODO: layout robustness** — map view has issues at half-screen width. Test and fix layout under different viewport sizes and zoom levels (known case: 200% browser zoom on high-DPI display causes map view problems at reduced window width).
+   - **TODO: stabilise poke snippet in status bar** — it jumps around making it hard to copy. Fix its position (e.g. right-align or pin to a dedicated slot) so it stays put. Also make it consistent with how the spritesheet view presents similar info.
+   - **TODO: layout robustness** — map view has issues at half-screen width. Test and fix layout under different viewport sizes and zoom levels (known case: 4K display at 200% system scaling causes map view problems at reduced window width).
+   - **TODO: code snippet usability** — snippets across the tool (poke footer, pal() export, animation) need to be easy to copy. Consider click-to-copy or a dedicated read-only text field rather than plain status bar text.
+   - **TODO: palette Lua snippet format** — global palette swap / project palette should always generate in the secret-palette-capable form (`pal(c, 128+n)` style) so it works without modification if the user later remaps to secret colours.
+   - **TODO: syntax highlighting** — add Prism.js for Lua syntax highlighting in code snippet windows. Small size, good Lua support, fits the aesthetic with a dark theme.
 10. **Drag & drop `.p8.png`** — implemented in `src/lib/p8/stego.ts`. See `.p8.png format` section below for the encoding spec. Lua code is not decompressed (not needed for palette tool). Label is recovered from visual pixels by nearest-colour matching.
 
 ## `.p8.png` format
