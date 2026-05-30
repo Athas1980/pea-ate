@@ -42,7 +42,7 @@ export default function LabelPaletteEditor({ label, labelPalette, onChange }: Pr
   return (
     <div className="flex flex-col gap-3">
       {tooMany && (
-        <div className="border border-[var(--p8-red)] p-2 text-[var(--p8-red)] leading-relaxed">
+        <div className="border-2 border-[var(--p8-red)] p-2 text-[var(--p8-red)] leading-relaxed">
           label has {uniqueValues.length} unique colour values (max 16).
           palette cannot be altered.
         </div>
@@ -82,7 +82,7 @@ export default function LabelPaletteEditor({ label, labelPalette, onChange }: Pr
       </div>
 
       {selectedValue !== null && (
-        <div className="flex flex-col gap-1 border border-[var(--p8-dark-grey)] p-2 w-fit">
+        <div className="flex flex-col gap-1 border-2 border-[var(--p8-dark-grey)] p-2 w-fit">
           <span className="text-[var(--p8-light-grey)]">
             index {selectedValue} → {(labelPalette[selectedValue] ?? selectedValue)}
           </span>

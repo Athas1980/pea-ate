@@ -95,7 +95,7 @@ export default function TilePicker({ gfx, drawPalette, brush, onBrushChange }: P
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => setHoverTile(null)}
-        className="block border border-[var(--p8-dark-grey)] cursor-crosshair select-none"
+        className="block border-2 border-[var(--p8-dark-grey)] cursor-crosshair select-none"
         style={{ imageRendering: 'pixelated', width: CANVAS_W * ZOOM, height: CANVAS_H * ZOOM }}
       />
       <p className="text-[var(--p8-white)] text-xs font-mono mt-1">

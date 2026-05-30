@@ -355,7 +355,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     <div className="flex flex-col gap-4">
 
       {/* Palette editor */}
-      <div className="flex flex-col gap-2 border-b border-[var(--p8-dark-grey)] pb-4">
+      <div className="flex flex-col gap-2 border-b-2 border-[var(--p8-dark-grey)] pb-4">
         <span className="text-[var(--p8-light-grey)]">draw palette</span>
 
         {/* Source slot grid */}
@@ -399,7 +399,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
 
         {/* Colour picker */}
         {selectedSlot !== null && (
-          <div className="flex flex-col gap-1 border border-[var(--p8-dark-grey)] p-2 w-fit">
+          <div className="flex flex-col gap-1 border-2 border-[var(--p8-dark-grey)] p-2 w-fit">
             <div className="flex items-center justify-between gap-4">
               <span className="text-[var(--p8-light-grey)]">slot {selectedSlot} → {drawPalette[selectedSlot]}</span>
               <button
@@ -482,7 +482,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
               onKeyDown={e => { if (e.key === 'Enter') handleSavePalette(); if (e.key === 'Escape') setSavingPalette(false) }}
               placeholder={`palette ${namedPalettes.length + 1}`}
               autoFocus
-              className="bg-transparent border border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-28 outline-none focus:border-[var(--p8-yellow)]"
+              className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-28 outline-none focus:border-[var(--p8-yellow)]"
             />
             <button onClick={handleSavePalette} className="text-[var(--p8-green)]">save</button>
             <button onClick={() => setSavingPalette(false)} className="text-[var(--p8-dark-grey)]">cancel</button>
@@ -506,7 +506,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
               }`}
             >{a.name}</button>
           ))}
-          <button onClick={createAnimation} className="px-2 py-0.5 border border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]">
+          <button onClick={createAnimation} className="px-2 py-0.5 border-2 border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]">
             + new
           </button>
         </div>
@@ -533,7 +533,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
               {anim.frames.length > 1 && (
                 <button
                   onClick={() => setViewMode(v => v === 'single' ? 'strip' : 'single')}
-                  className={`px-2 py-0.5 border ${viewMode === 'strip'
+                  className={`px-2 py-0.5 border-2 ${viewMode === 'strip'
                     ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
                     : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
                   }`}
@@ -548,7 +548,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                 onMouseMove={handleCanvasMouseMove}
                 onMouseUp={handleCanvasMouseUp}
                 onMouseLeave={handleCanvasMouseUp}
-                className={`border border-[var(--p8-dark-grey)] ${playing ? 'cursor-default' : 'cursor-crosshair'}`}
+                className={`border-2 border-[var(--p8-dark-grey)] ${playing ? 'cursor-default' : 'cursor-crosshair'}`}
                 style={{ imageRendering: 'pixelated', width: (anim.mirror ? canvasW * 2 : canvasW) * zoom, height: canvasH * zoom }}
               />
             ) : (
@@ -589,27 +589,27 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
         <div className="flex flex-col gap-2 w-52">
           {anim ? (
             <>
-              <div className="border border-[var(--p8-dark-grey)] p-2 flex flex-col gap-2">
+              <div className="border-2 border-[var(--p8-dark-grey)] p-2 flex flex-col gap-2">
                 <input
                   type="text"
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
                   onBlur={saveName}
                   onKeyDown={e => { if (e.key === 'Enter') { saveName(); (e.target as HTMLInputElement).blur() } }}
-                  className="bg-transparent border border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-full outline-none focus:border-[var(--p8-yellow)]"
+                  className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-full outline-none focus:border-[var(--p8-yellow)]"
                 />
                 <div className="flex items-center gap-1.5">
                   <span className="text-[var(--p8-dark-grey)]">w</span>
                   <input type="number" min={1} max={8} value={editWStr}
                     onFocus={e => e.currentTarget.select()}
                     onChange={e => { setEditWStr(e.target.value); setConfirmingResize(false) }}
-                    className="bg-transparent border border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-8 outline-none focus:border-[var(--p8-yellow)]"
+                    className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-8 outline-none focus:border-[var(--p8-yellow)]"
                   />
                   <span className="text-[var(--p8-dark-grey)]">h</span>
                   <input type="number" min={1} max={8} value={editHStr}
                     onFocus={e => e.currentTarget.select()}
                     onChange={e => { setEditHStr(e.target.value); setConfirmingResize(false) }}
-                    className="bg-transparent border border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-8 outline-none focus:border-[var(--p8-yellow)]"
+                    className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-8 outline-none focus:border-[var(--p8-yellow)]"
                   />
                   <span className="text-[var(--p8-dark-grey)]">tiles</span>
                 </div>
@@ -652,7 +652,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
               </button>
             </>
           ) : (
-            <button onClick={createAnimation} className="px-2 py-0.5 border border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]">
+            <button onClick={createAnimation} className="px-2 py-0.5 border-2 border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]">
               + new animation
             </button>
           )}
@@ -661,9 +661,9 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
 
       {/* Footer — only when animation active */}
       {anim && (
-        <div className="flex items-center gap-6 border-t border-[var(--p8-dark-grey)] pt-3">
+        <div className="flex items-center gap-6 border-t-2 border-[var(--p8-dark-grey)] pt-3">
           <button onClick={() => setPlaying(p => !p)}
-            className={`px-2 py-0.5 border ${playing
+            className={`px-2 py-0.5 border-2 ${playing
               ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
               : 'border-[var(--p8-white)] text-[var(--p8-white)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
             }`}
@@ -678,7 +678,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
             <span className="text-[var(--p8-dark-grey)]">({Math.round(60 / anim.speed)}fps)</span>
           </div>
           <button onClick={() => updateAnim({ mirror: !anim.mirror })}
-            className={`px-2 py-0.5 border ${anim.mirror
+            className={`px-2 py-0.5 border-2 ${anim.mirror
               ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
               : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
             }`}
@@ -709,7 +709,7 @@ function FrameCard({ frameIdx, frame, active, namedPalettes, onClick, onPaletteC
   return (
     <div
       onClick={onClick}
-      className={`flex flex-col gap-1.5 p-1.5 border cursor-pointer ${active
+      className={`flex flex-col gap-1.5 p-1.5 border-2 cursor-pointer ${active
         ? 'border-[var(--p8-yellow)]'
         : 'border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]'
       }`}
@@ -733,13 +733,13 @@ function FrameCard({ frameIdx, frame, active, namedPalettes, onClick, onPaletteC
         <select
           value={frame.palette ?? ''}
           onChange={e => onPaletteChange(e.target.value === '' ? undefined : parseInt(e.target.value))}
-          className="bg-[#111] border border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] px-1 w-24"
+          className="bg-[#111] border-2 border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] px-1 w-24"
         >
           <option value="">default</option>
           {namedPalettes.map((p, i) => <option key={i} value={i}>{p.name}</option>)}
         </select>
         <button onClick={onFlipToggle} title="Flip"
-          className={`px-1 border ${frame.flip
+          className={`px-1 border-2 ${frame.flip
             ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
             : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'
           }`}
@@ -778,7 +778,7 @@ function FilmstripFrame({ frame, w, h, gfx, resolvedPalette, mirror, active, zoo
       ref={canvasRef}
       width={displayW} height={ph}
       onClick={onClick}
-      className={`border cursor-pointer ${active
+      className={`border-2 cursor-pointer ${active
         ? 'border-[var(--p8-yellow)]'
         : 'border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]'
       }`}

@@ -39,7 +39,7 @@ export default function SpritesheetView({ gfx, drawPalette, pixelRows }: Props) 
       ref={canvasRef}
       width={128}
       height={canvasHeight}
-      className="border border-[var(--p8-dark-grey)]"
+      className="border-2 border-[var(--p8-dark-grey)]"
       style={{ imageRendering: 'pixelated', width: 512, height: displayHeight }}
     />
   )
