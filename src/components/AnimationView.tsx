@@ -43,11 +43,15 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'single' | 'strip'>('single')
   const [zoom, setZoom] = useState(4)
+  const [showGrid, setShowGrid] = useState(false)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const paintingRef = useRef(false)
   const rafRef = useRef<number | null>(null)
   const animRef = useRef<Animation | null>(null)
+  const historyRef = useRef<Animation[][]>([])
+  const animationsRef = useRef(animations)
+  animationsRef.current = animations
 
   const anim = activeAnimIdx !== null ? (animations[activeAnimIdx] ?? null) : null
   const safeFrameIdx = anim ? Math.min(activeFrameIdx, anim.frames.length - 1) : 0
@@ -60,6 +64,13 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
       : IDENTITY
     return base.map(slot => projectPalette[slot])
   }, [frame?.palette, projectPalette, namedPalettes])
+
+  const resolvedTransparent = useMemo(() => {
+    if (frame?.palette !== undefined && namedPalettes[frame.palette]) {
+      return namedPalettes[frame.palette].transparentColours
+    }
+    return transparentColours
+  }, [frame?.palette, namedPalettes, transparentColours])
 
   const animSnippet = useMemo(() =>
     anim ? generateAnimSnippet(anim, namedPalettes, projectPalette) : null,
@@ -78,8 +89,8 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     const canvas = canvasRef.current
     if (!canvas || !anim || !frame) return
     const ctx = canvas.getContext('2d')!
-    renderFrame(ctx, frame, anim.w, anim.h, gfx, resolvedPalette, anim.mirror ?? false)
-  }, [frame, anim, gfx, resolvedPalette, viewMode])
+    renderFrame(ctx, frame, anim.w, anim.h, gfx, resolvedPalette, anim.mirror ?? false, resolvedTransparent)
+  }, [frame, anim, gfx, resolvedPalette, resolvedTransparent, viewMode])
 
   // Playback loop
   useEffect(() => {
@@ -118,6 +129,21 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     if (a) { setEditName(a.name); setEditWStr(String(a.w)); setEditHStr(String(a.h)) }
   }, [activeAnimIdx])
 
+  // Undo
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        const h = historyRef.current
+        if (h.length === 0) return
+        e.preventDefault()
+        onAnimationsChange(h[h.length - 1])
+        historyRef.current = h.slice(0, -1)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onAnimationsChange])
+
   // Painting
   function getTilePos(e: React.MouseEvent<HTMLCanvasElement>) {
     if (!anim) return null
@@ -130,13 +156,11 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
 
   function paintAt(tx: number, ty: number) {
     if (activeAnimIdx === null || !anim || !frame) return
-    const snappedTx = Math.floor(tx / brush.w) * brush.w
-    const snappedTy = Math.floor(ty / brush.h) * brush.h
     const newTiles = [...frame.tiles]
     for (let dy = 0; dy < brush.h; dy++) {
       for (let dx = 0; dx < brush.w; dx++) {
-        const destX = snappedTx + dx
-        const destY = snappedTy + dy
+        const destX = tx + dx
+        const destY = ty + dy
         if (destX < anim.w && destY < anim.h) {
           newTiles[destY * anim.w + destX] = (brush.tileY + dy) * 16 + (brush.tileX + dx)
         }
@@ -148,6 +172,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
   function handleCanvasMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
     if (playing) return
     e.preventDefault()
+    historyRef.current = [...historyRef.current.slice(-49), animationsRef.current]
     paintingRef.current = true
     const pos = getTilePos(e)
     if (pos) paintAt(pos.tx, pos.ty)
@@ -552,25 +577,47 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                   }`}
                 >strip</button>
               )}
+              <button
+                onClick={() => setShowGrid(g => !g)}
+                className={`px-2 py-0.5 border-2 ${showGrid
+                  ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
+                  : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+                }`}
+              >grid</button>
             </div>
             {viewMode === 'single' ? (
-              <canvas
-                ref={canvasRef}
-                width={anim.mirror ? canvasW * 2 : canvasW} height={canvasH}
-                onMouseDown={handleCanvasMouseDown}
-                onMouseMove={handleCanvasMouseMove}
-                onMouseUp={handleCanvasMouseUp}
-                onMouseLeave={handleCanvasMouseUp}
-                className={`border-2 border-[var(--p8-dark-grey)] ${playing ? 'cursor-default' : 'cursor-crosshair'}`}
-                style={{ imageRendering: 'pixelated', width: (anim.mirror ? canvasW * 2 : canvasW) * zoom, height: canvasH * zoom }}
-              />
+              <div className="relative" style={{ width: (anim.mirror ? canvasW * 2 : canvasW) * zoom, height: canvasH * zoom }}>
+                <canvas
+                  ref={canvasRef}
+                  width={anim.mirror ? canvasW * 2 : canvasW} height={canvasH}
+                  onMouseDown={handleCanvasMouseDown}
+                  onMouseMove={handleCanvasMouseMove}
+                  onMouseUp={handleCanvasMouseUp}
+                  onMouseLeave={handleCanvasMouseUp}
+                  className={`border-2 border-[var(--p8-dark-grey)] bg-black ${playing ? 'cursor-default' : 'cursor-crosshair'}`}
+                  style={{ imageRendering: 'pixelated', width: (anim.mirror ? canvasW * 2 : canvasW) * zoom, height: canvasH * zoom }}
+                />
+                {showGrid && (
+                  <svg
+                    className="absolute inset-0 pointer-events-none"
+                    width={(anim.mirror ? canvasW * 2 : canvasW) * zoom} height={canvasH * zoom}
+                  >
+                    {Array.from({ length: (anim.mirror ? anim.w * 2 : anim.w) - 1 }, (_, i) => (
+                      <line key={`v${i}`} x1={(i + 1) * TILE * zoom} y1={0} x2={(i + 1) * TILE * zoom} y2={canvasH * zoom} stroke="rgba(255,255,255,0.75)" strokeWidth={1} shapeRendering="crispEdges" />
+                    ))}
+                    {Array.from({ length: anim.h - 1 }, (_, i) => (
+                      <line key={`h${i}`} x1={0} y1={(i + 1) * TILE * zoom} x2={(anim.mirror ? canvasW * 2 : canvasW) * zoom} y2={(i + 1) * TILE * zoom} stroke="rgba(255,255,255,0.75)" strokeWidth={1} shapeRendering="crispEdges" />
+                    ))}
+                  </svg>
+                )}
+              </div>
             ) : (
               <div className="flex flex-col gap-1">
                 {anim.frames.map((f, fi) => {
-                  const base = (f.palette !== undefined && namedPalettes[f.palette])
-                    ? namedPalettes[f.palette].drawPalette
-                    : IDENTITY
+                  const np = f.palette !== undefined ? namedPalettes[f.palette] : null
+                  const base = np ? np.drawPalette : IDENTITY
                   const palette = base.map(slot => projectPalette[slot])
+                  const frameTransparent = np ? np.transparentColours : transparentColours
                   return (
                     <FilmstripFrame
                       key={fi}
@@ -578,6 +625,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                       w={anim.w} h={anim.h}
                       gfx={gfx}
                       resolvedPalette={palette}
+                      transparentColours={frameTransparent}
                       mirror={anim.mirror ?? false}
                       active={fi === safeFrameIdx}
                       zoom={zoom}
@@ -776,13 +824,14 @@ interface FilmstripFrameProps {
   h: number
   gfx: Uint8Array
   resolvedPalette: number[]
+  transparentColours: number[]
   mirror: boolean
   active: boolean
   zoom: number
   onClick: () => void
 }
 
-function FilmstripFrame({ frame, w, h, gfx, resolvedPalette, mirror, active, zoom, onClick }: FilmstripFrameProps) {
+function FilmstripFrame({ frame, w, h, gfx, resolvedPalette, transparentColours, mirror, active, zoom, onClick }: FilmstripFrameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const pw = w * TILE, ph = h * TILE
   const displayW = mirror ? pw * 2 : pw
@@ -791,15 +840,15 @@ function FilmstripFrame({ frame, w, h, gfx, resolvedPalette, mirror, active, zoo
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
-    renderFrame(ctx, frame, w, h, gfx, resolvedPalette, mirror)
-  }, [frame, w, h, gfx, resolvedPalette, mirror])
+    renderFrame(ctx, frame, w, h, gfx, resolvedPalette, mirror, transparentColours)
+  }, [frame, w, h, gfx, resolvedPalette, transparentColours, mirror])
 
   return (
     <canvas
       ref={canvasRef}
       width={displayW} height={ph}
       onClick={onClick}
-      className={`border-2 cursor-pointer ${active
+      className={`border-2 cursor-pointer bg-black ${active
         ? 'border-[var(--p8-yellow)]'
         : 'border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]'
       }`}
@@ -814,10 +863,12 @@ function renderFrame(
   w: number, h: number,
   gfx: Uint8Array,
   resolvedPalette: number[],
-  mirror: boolean
+  mirror: boolean,
+  transparentColours: number[] = []
 ) {
   const pw = w * TILE, ph = h * TILE
   const rgb = resolveRgb(resolvedPalette)
+  const transpMask = transparentColours.reduce((b, c) => b | (1 << c), 0)
 
   // Render tiles into a pw×ph buffer
   const tileData = new ImageData(pw, ph)
@@ -830,8 +881,12 @@ function renderFrame(
         for (let px = 0; px < TILE; px++) {
           const pixelIdx = gfx[(sprY + py) * 128 + (sprX + px)] & 0xf
           const i = ((ty * TILE + py) * pw + (tx * TILE + px)) * 4
-          const [r, g, b] = rgb[pixelIdx]
-          tileData.data[i] = r; tileData.data[i+1] = g; tileData.data[i+2] = b; tileData.data[i+3] = 255
+          if (transpMask & (1 << pixelIdx)) {
+            tileData.data[i+3] = 0
+          } else {
+            const [r, g, b] = rgb[pixelIdx]
+            tileData.data[i] = r; tileData.data[i+1] = g; tileData.data[i+2] = b; tileData.data[i+3] = 255
+          }
         }
       }
     }

@@ -419,16 +419,18 @@ export default function MapView({
             }}
           />
           {showGrid && (
-            <div
+            <svg
               className="absolute inset-0 pointer-events-none"
-              style={{
-                backgroundImage: [
-                  'linear-gradient(to right, rgba(255,255,255,0.15) 1px, transparent 1px)',
-                  'linear-gradient(to bottom, rgba(255,255,255,0.15) 1px, transparent 1px)',
-                ].join(', '),
-                backgroundSize: `${8 * zoom}px ${8 * zoom}px`,
-              }}
-            />
+              width={canvasW * zoom} height={canvasH * zoom}
+              style={{ overflow: 'visible' }}
+            >
+              {Array.from({ length: mapWidth - 1 }, (_, i) => (
+                <line key={`v${i}`} x1={(i + 1) * 8 * zoom} y1={0} x2={(i + 1) * 8 * zoom} y2={canvasH * zoom} stroke="rgba(255,255,255,0.75)" strokeWidth={1} shapeRendering="crispEdges" />
+              ))}
+              {Array.from({ length: displayRows - 1 }, (_, i) => (
+                <line key={`h${i}`} x1={0} y1={(i + 1) * 8 * zoom} x2={canvasW * zoom} y2={(i + 1) * 8 * zoom} stroke="rgba(255,255,255,0.75)" strokeWidth={1} shapeRendering="crispEdges" />
+              ))}
+            </svg>
           )}
         </div>
       </div>

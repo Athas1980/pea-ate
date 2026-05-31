@@ -41,6 +41,7 @@ export default function App() {
   const [cart, setCart] = useState<Cart | null>(null)
   const [filename, setFilename] = useState<string>('cart.p8')
   const [tab, setTab] = useState<Tab>('spritesheet')
+  const tabRef = useRef<Tab>('spritesheet')
   const [projectPalette, setProjectPalette] = useState<number[]>(DEFAULT_PROJECT_PALETTE)
   const [drawPalette, setDrawPalette] = useState<number[]>(IDENTITY_PALETTE)
   const [labelPalette, setLabelPalette] = useState<Record<number, number>>({})
@@ -56,6 +57,7 @@ export default function App() {
   const [mapTool, setMapTool] = useState<MapToolState>({ tool: 'brush', eraserSize: 1, fillRandom: false })
   const [hoverMapTile, setHoverMapTile] = useState<{ tx: number; ty: number; tileIdx: number } | null>(null)
   const [, setMapHistory] = useState<Uint8Array[]>([])
+  tabRef.current = tab
   const [showHelp, setShowHelp] = useState(false)
 
   function handleLoad(loaded: Cart, name: string) {
@@ -100,7 +102,7 @@ export default function App() {
         setShowHelp(v => !v)
         return
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && tabRef.current === 'map') {
         e.preventDefault()
         setMapHistory(h => {
           if (h.length === 0) return h
