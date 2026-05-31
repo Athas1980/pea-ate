@@ -69,8 +69,8 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     if (frame?.palette !== undefined && namedPalettes[frame.palette]) {
       return namedPalettes[frame.palette].transparentColours
     }
-    return transparentColours
-  }, [frame?.palette, namedPalettes, transparentColours])
+    return []
+  }, [frame?.palette, namedPalettes])
 
   const animSnippet = useMemo(() =>
     anim ? generateAnimSnippet(anim, namedPalettes, projectPalette) : null,
@@ -617,7 +617,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                   const np = f.palette !== undefined ? namedPalettes[f.palette] : null
                   const base = np ? np.drawPalette : IDENTITY
                   const palette = base.map(slot => projectPalette[slot])
-                  const frameTransparent = np ? np.transparentColours : transparentColours
+                  const frameTransparent = np ? np.transparentColours : []
                   return (
                     <FilmstripFrame
                       key={fi}
@@ -943,8 +943,10 @@ function isContiguous(tiles: number[], w: number, h: number): boolean {
   return true
 }
 
-function rotatePaletteStr(drawPalette: number[], projectPalette: number[]): string {
+function paletteStr(drawPalette: number[], projectPalette: number[]): string {
   const colours = drawPalette.map(slot => projectPalette[slot])
+  // pal(split"...") is 0-indexed but split returns a 1-indexed Lua table;
+  // Pico-8 wraps t[0] to t[16], so colours[0] goes last.
   return [...colours.slice(1), colours[0]].join(',')
 }
 
@@ -964,7 +966,7 @@ function generateAnimSnippet(
       const frame = frames[i]
       const np = frame.palette !== undefined ? namedPalettes[frame.palette] : null
       if (np) {
-        lines.push(`pal(split"${rotatePaletteStr(np.drawPalette, projectPalette)}")  -- ${np.name}`)
+        lines.push(`pal(split"${paletteStr(np.drawPalette, projectPalette)}")  -- ${np.name}`)
         const bitmask = np.transparentColours.reduce((b, c) => b | (1 << c), 0)
         if (bitmask !== 1) lines.push(`palt(${bitmask})`)
       }
@@ -998,7 +1000,7 @@ function generateAnimSnippet(
         const np = frames[i].palette !== undefined ? namedPalettes[frames[i].palette!] : null
         if (np) {
           const bitmask = np.transparentColours.reduce((b, c) => b | (1 << c), 0)
-          lines.push(`-- frame ${i + 1}: pal(split"${rotatePaletteStr(np.drawPalette, projectPalette)}")${bitmask !== 1 ? ` palt(${bitmask})` : ''}`)
+          lines.push(`-- frame ${i + 1}: pal(split"${paletteStr(np.drawPalette, projectPalette)}")${bitmask !== 1 ? ` palt(${bitmask})` : ''}`)
         }
       }
     }
