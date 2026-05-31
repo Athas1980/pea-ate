@@ -233,9 +233,13 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
 
   function createAnimation() {
     const name = `anim ${animations.length + 1}`
+    const tiles: number[] = []
+    for (let dy = 0; dy < brush.h; dy++)
+      for (let dx = 0; dx < brush.w; dx++)
+        tiles.push((brush.tileY + dy) * 16 + (brush.tileX + dx))
     const newAnim: Animation = {
-      name, mode: 'grid', speed: 12, w: 1, h: 1,
-      frames: [{ tiles: [0] }],
+      name, mode: 'grid', speed: 12, w: brush.w, h: brush.h,
+      frames: [{ tiles }],
     }
     const next = [...animations, newAnim]
     onAnimationsChange(next)
@@ -976,6 +980,9 @@ function generateAnimSnippet(
     }
   } else {
     const varName = anim.name.replace(/\s+/g, '_') + '_frames'
+    lines.push('-- reference implementation: raw tile indices per frame.')
+    lines.push('-- optimise for your cart as needed (e.g. fewer spr calls,')
+    lines.push('-- shared regions, etc.).')
     lines.push('function multi_spr(x, y, tiles, w, h)')
     lines.push('  local i=1')
     lines.push('  for ty=0,h-1 do')
@@ -990,7 +997,7 @@ function generateAnimSnippet(
     for (let i = 0; i < frames.length; i++) {
       const np = frames[i].palette !== undefined ? namedPalettes[frames[i].palette!] : null
       const comment = np ? `  -- frame ${i + 1} (${np.name})` : `  -- frame ${i + 1}`
-      lines.push(`  {${frames[i].tiles.join(', ')}},${comment}`)
+      lines.push(`  split"${frames[i].tiles.join(',')}",${comment}`)
     }
     lines.push('}')
     const hasPalette = frames.some(f => f.palette !== undefined)
