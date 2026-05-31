@@ -448,7 +448,7 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
 
 function readFile(file: File, onLoad: (cart: Cart, filename: string) => void) {
   if (file.name.endsWith('.p8.png')) {
-    decodePngCart(file).then(cart => onLoad(cart, file.name))
+    decodePngCart(file).then(cart => onLoad(cart, file.name.replace(/\.png$/, '')))
     return
   }
   const reader = new FileReader()

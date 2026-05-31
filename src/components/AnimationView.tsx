@@ -44,6 +44,8 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
   const [viewMode, setViewMode] = useState<'single' | 'strip'>('single')
   const [zoom, setZoom] = useState(4)
   const [showGrid, setShowGrid] = useState(false)
+  const [hoveredSlot, setHoveredSlot] = useState<number | null>(null)
+  const [blinkOn, setBlinkOn] = useState(false)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const paintingRef = useRef(false)
@@ -89,8 +91,8 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     const canvas = canvasRef.current
     if (!canvas || !anim || !frame) return
     const ctx = canvas.getContext('2d')!
-    renderFrame(ctx, frame, anim.w, anim.h, gfx, resolvedPalette, anim.mirror ?? false, resolvedTransparent)
-  }, [frame, anim, gfx, resolvedPalette, resolvedTransparent, viewMode])
+    renderFrame(ctx, frame, anim.w, anim.h, gfx, resolvedPalette, anim.mirror ?? false, resolvedTransparent, hoveredSlot, blinkOn)
+  }, [frame, anim, gfx, resolvedPalette, resolvedTransparent, viewMode, hoveredSlot, blinkOn])
 
   // Playback loop
   useEffect(() => {
@@ -128,6 +130,18 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     const a = activeAnimIdx !== null ? animations[activeAnimIdx] : null
     if (a) { setEditName(a.name); setEditWStr(String(a.w)); setEditHStr(String(a.h)) }
   }, [activeAnimIdx])
+
+  // Highlight blink
+  useEffect(() => {
+    if (hoveredSlot == null) { setBlinkOn(false); return }
+    let id: ReturnType<typeof setTimeout>
+    function schedule(on: boolean) {
+      id = setTimeout(() => { setBlinkOn(on); schedule(!on) }, on ? 650 : 150)
+    }
+    setBlinkOn(true)
+    schedule(false)
+    return () => clearTimeout(id)
+  }, [hoveredSlot == null]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Undo
   useEffect(() => {
@@ -418,6 +432,8 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                     if (selectedSlot === slot) setSelectedSlot(null)
                   }
                 }}
+                onMouseEnter={() => setHoveredSlot(slot)}
+                onMouseLeave={() => setHoveredSlot(null)}
                 className="relative flex flex-col items-center gap-0.5 p-0"
               >
                 <div className="relative w-6 h-6" style={{
@@ -868,7 +884,9 @@ function renderFrame(
   gfx: Uint8Array,
   resolvedPalette: number[],
   mirror: boolean,
-  transparentColours: number[] = []
+  transparentColours: number[] = [],
+  highlightSlot: number | null = null,
+  blinkOn = false
 ) {
   const pw = w * TILE, ph = h * TILE
   const rgb = resolveRgb(resolvedPalette)
@@ -887,6 +905,9 @@ function renderFrame(
           const i = ((ty * TILE + py) * pw + (tx * TILE + px)) * 4
           if (transpMask & (1 << pixelIdx)) {
             tileData.data[i+3] = 0
+          } else if (highlightSlot !== null && blinkOn && pixelIdx === highlightSlot) {
+            const [r, g, b] = rgb[pixelIdx]
+            tileData.data[i] = 255-r; tileData.data[i+1] = 255-g; tileData.data[i+2] = 255-b; tileData.data[i+3] = 255
           } else {
             const [r, g, b] = rgb[pixelIdx]
             tileData.data[i] = r; tileData.data[i+1] = g; tileData.data[i+2] = b; tileData.data[i+3] = 255

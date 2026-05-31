@@ -14,9 +14,10 @@ interface Props {
   onApplyPalette: (index: number) => void
   transparentColours: number[]
   onTransparencyChange: (t: number[]) => void
+  onHoverSlot?: (slot: number | null) => void
 }
 
-export default function PaletteEditor({ drawPalette, onChange, projectPalette, namedPalettes, onSavePalette, onDeletePalette, onApplyPalette, transparentColours, onTransparencyChange }: Props) {
+export default function PaletteEditor({ drawPalette, onChange, projectPalette, namedPalettes, onSavePalette, onDeletePalette, onApplyPalette, transparentColours, onTransparencyChange, onHoverSlot }: Props) {
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
   const [saveName, setSaveName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -92,6 +93,8 @@ export default function PaletteEditor({ drawPalette, onChange, projectPalette, n
                   title={`slot ${slot} → slot ${targetSlot}`}
                   onClick={() => handleSlotClick(slot)}
                   onContextMenu={e => { e.preventDefault(); if (remapped) resetSlot(slot) }}
+                  onMouseEnter={() => onHoverSlot?.(slot)}
+                  onMouseLeave={() => onHoverSlot?.(null)}
                   className="relative flex flex-col items-center gap-0.5 p-0"
                 >
                   <div
