@@ -5,9 +5,10 @@ import CodeSnippet from './CodeSnippet'
 interface Props {
   projectPalette: number[]
   onChange: (p: number[]) => void
+  onHoverSlot?: (slot: number | null) => void
 }
 
-export default function ProjectPaletteEditor({ projectPalette, onChange }: Props) {
+export default function ProjectPaletteEditor({ projectPalette, onChange, onHoverSlot }: Props) {
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
 
   function handleSlotClick(slot: number) {
@@ -60,6 +61,8 @@ export default function ProjectPaletteEditor({ projectPalette, onChange }: Props
                   title={`slot ${slot} → ${colourIdx}`}
                   onClick={() => handleSlotClick(slot)}
                   onContextMenu={e => { e.preventDefault(); if (changed) resetSlot(slot) }}
+                  onMouseEnter={() => onHoverSlot?.(slot)}
+                  onMouseLeave={() => onHoverSlot?.(null)}
                   className="relative flex flex-col items-center gap-0.5 p-0"
                 >
                   <div

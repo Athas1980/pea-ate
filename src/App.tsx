@@ -59,6 +59,7 @@ export default function App() {
   const [, setMapHistory] = useState<Uint8Array[]>([])
   tabRef.current = tab
   const [showHelp, setShowHelp] = useState(false)
+  const [hoveredProjectSlot, setHoveredProjectSlot] = useState<number | null>(null)
 
   function handleLoad(loaded: Cart, name: string) {
     setCart(loaded)
@@ -251,8 +252,9 @@ export default function App() {
                   gfx={cart.gfx}
                   drawPalette={projectPalette}
                   pixelRows={cartOpts.useSharedMap ? 64 : 128}
+                  highlightSlot={hoveredProjectSlot}
                 />
-                <ProjectPaletteEditor projectPalette={projectPalette} onChange={setProjectPalette} />
+                <ProjectPaletteEditor projectPalette={projectPalette} onChange={setProjectPalette} onHoverSlot={setHoveredProjectSlot} />
               </div>
             )}
             {tab === 'map' && (
