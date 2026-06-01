@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { STANDARD_PALETTE, SECRET_PALETTE } from '../types/cart'
-import type { Animation, AnimationFrame, TileBrush } from '../types/cart'
+import type { Animation, AnimationFrame, NamedPalette, TileBrush } from '../types/cart'
 import TilePicker from './TilePicker'
 import CodeSnippet from './CodeSnippet'
 
@@ -10,25 +10,18 @@ const TILE = 8
 const IDENTITY = Array.from({ length: 16 }, (_, i) => i)
 type Rgb = [number, number, number]
 
-interface NamedPalette { name: string; drawPalette: number[]; transparentColours: number[] }
-
 interface Props {
   gfx: Uint8Array
   projectPalette: number[]
-  drawPalette: number[]
-  onDrawPaletteChange: (p: number[]) => void
-  transparentColours: number[]
-  onTransparencyChange: (t: number[]) => void
-  namedPalettes: NamedPalette[]
-  onSaveNamedPalette: (name: string) => void
-  onDeleteNamedPalette: (index: number) => void
-  onDuplicateNamedPalette: (index: number) => void
-  onApplyNamedPalette: (index: number) => void
+  palettes: NamedPalette[]
+  activePaletteId: number
+  onPalettesChange: (palettes: NamedPalette[]) => void
+  onActivePaletteIdChange: (id: number) => void
   animations: Animation[]
   onAnimationsChange: (a: Animation[]) => void
 }
 
-export default function AnimationView({ gfx, projectPalette, drawPalette, onDrawPaletteChange, transparentColours, onTransparencyChange, namedPalettes, onSaveNamedPalette, onDeleteNamedPalette, onDuplicateNamedPalette, onApplyNamedPalette, animations, onAnimationsChange }: Props) {
+export default function AnimationView({ gfx, projectPalette, palettes, activePaletteId, onPalettesChange, onActivePaletteIdChange, animations, onAnimationsChange }: Props) {
   const [activeAnimIdx, setActiveAnimIdx] = useState<number | null>(animations.length > 0 ? 0 : null)
   const [activeFrameIdx, setActiveFrameIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -60,23 +53,27 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
   const frame = anim ? anim.frames[safeFrameIdx] ?? null : null
   animRef.current = anim
 
+  const activePalette = palettes.find(p => p.id === activePaletteId) ?? palettes[0]
+  const drawPalette = activePalette.drawPalette
+  const transparentColours = activePalette.transparentColours
+
   const resolvedPalette = useMemo(() => {
-    const base = (frame?.palette !== undefined && namedPalettes[frame.palette])
-      ? namedPalettes[frame.palette].drawPalette
-      : IDENTITY
+    const pal = frame?.paletteId !== undefined ? palettes.find(p => p.id === frame.paletteId) : null
+    const base = pal ? pal.drawPalette : IDENTITY
     return base.map(slot => projectPalette[slot])
-  }, [frame?.palette, projectPalette, namedPalettes])
+  }, [frame?.paletteId, projectPalette, palettes])
 
   const resolvedTransparent = useMemo(() => {
-    if (frame?.palette !== undefined && namedPalettes[frame.palette]) {
-      return namedPalettes[frame.palette].transparentColours
+    if (frame?.paletteId !== undefined) {
+      const pal = palettes.find(p => p.id === frame.paletteId)
+      if (pal) return pal.transparentColours
     }
     return []
-  }, [frame?.palette, namedPalettes])
+  }, [frame?.paletteId, palettes])
 
   const animSnippet = useMemo(() =>
-    anim ? generateAnimSnippet(anim, namedPalettes, projectPalette) : null,
-    [anim, namedPalettes, projectPalette]
+    anim ? generateAnimSnippet(anim, palettes, projectPalette) : null,
+    [anim, palettes, projectPalette]
   )
   const [snippetCopied, setSnippetCopied] = useState(false)
   function handleSnippetCopy() {
@@ -214,7 +211,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     const prev = anim.frames[anim.frames.length - 1]
     const newFrame: AnimationFrame = {
       tiles: prev ? [...prev.tiles] : Array(anim.w * anim.h).fill(0),
-      palette: prev?.palette,
+      paletteId: prev?.paletteId,
       flip: prev?.flip,
     }
     onAnimationsChange(animations.map((a, i) =>
@@ -296,9 +293,12 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     setPlaying(false)
   }
 
-  function handleSavePalette() {
-    const name = savePaletteName.trim() || `palette ${namedPalettes.length + 1}`
-    onSaveNamedPalette(name)
+  function handleAddPalette() {
+    const name = savePaletteName.trim() || `palette ${palettes.length + 1}`
+    const id = Math.max(0, ...palettes.map(p => p.id)) + 1
+    const newPalette: NamedPalette = { id, name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }
+    onPalettesChange([...palettes, newPalette])
+    onActivePaletteIdChange(id)
     setSavePaletteName('')
     setSavingPalette(false)
   }
@@ -319,9 +319,8 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
 
       for (let fi = 0; fi < anim.frames.length; fi++) {
         const f = anim.frames[fi]
-        const base = (f.palette !== undefined && namedPalettes[f.palette])
-          ? namedPalettes[f.palette].drawPalette
-          : IDENTITY
+        const pal = f.paletteId !== undefined ? palettes.find(p => p.id === f.paletteId) : null
+        const base = pal ? pal.drawPalette : IDENTITY
 
         // GIF palette: index p → colour that slot p draws as in this frame
         const gifPalette: [number, number, number][] = Array.from({ length: 16 }, (_, p) => {
@@ -428,7 +427,8 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                 onContextMenu={e => {
                   e.preventDefault()
                   if (remapped) {
-                    const next = [...drawPalette]; next[slot] = slot; onDrawPaletteChange(next)
+                    const next = [...drawPalette]; next[slot] = slot
+                    onPalettesChange(palettes.map(p => p.id === activePaletteId ? { ...p, drawPalette: next } : p))
                     if (selectedSlot === slot) setSelectedSlot(null)
                   }
                 }}
@@ -462,11 +462,10 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
               <span className="text-[var(--p8-light-grey)]">slot {selectedSlot} → {drawPalette[selectedSlot]}</span>
               <button
                 onClick={() => {
-                  if (transparentColours.includes(selectedSlot)) {
-                    onTransparencyChange(transparentColours.filter(s => s !== selectedSlot))
-                  } else {
-                    onTransparencyChange([...transparentColours, selectedSlot])
-                  }
+                  const next = transparentColours.includes(selectedSlot)
+                    ? transparentColours.filter(s => s !== selectedSlot)
+                    : [...transparentColours, selectedSlot]
+                  onPalettesChange(palettes.map(p => p.id === activePaletteId ? { ...p, transparentColours: next } : p))
                 }}
                 className={transparentColours.includes(selectedSlot) ? 'text-[var(--p8-yellow)]' : 'text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'}
               >
@@ -484,7 +483,10 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                     outline: drawPalette[selectedSlot] === slotIdx ? '2px solid var(--p8-yellow)' : '2px solid transparent',
                     outlineOffset: '1px',
                   }}
-                  onClick={() => { const next = [...drawPalette]; next[selectedSlot] = slotIdx; onDrawPaletteChange(next) }}
+                  onClick={() => {
+                    const next = [...drawPalette]; next[selectedSlot] = slotIdx
+                    onPalettesChange(palettes.map(p => p.id === activePaletteId ? { ...p, drawPalette: next } : p))
+                  }}
                 />
               ))}
             </div>
@@ -493,62 +495,81 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
 
         {drawPalette.some((v, i) => v !== i) && (
           <button
-            onClick={() => { onDrawPaletteChange(Array.from({ length: 16 }, (_, i) => i)); setSelectedSlot(null) }}
+            onClick={() => {
+              onPalettesChange(palettes.map(p => p.id === activePaletteId ? { ...p, drawPalette: [...IDENTITY] } : p))
+              setSelectedSlot(null)
+            }}
             className="self-start text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]"
           >reset all</button>
         )}
 
         {/* Named palettes list */}
-        {namedPalettes.length > 0 && (
-          <div className="flex flex-col gap-1.5 mt-1">
-            <span className="text-[var(--p8-light-grey)]">named palettes</span>
-            {namedPalettes.map((pal, i) => (
-              <div key={i} className="flex items-center gap-1.5">
+        <div className="flex flex-col gap-1.5 mt-1">
+          <span className="text-[var(--p8-light-grey)]">named palettes</span>
+          {palettes.map(pal => (
+            <div key={pal.id} className="flex items-center gap-1.5">
+              <button
+                onClick={() => onActivePaletteIdChange(pal.id)}
+                className="flex items-center gap-1 text-left hover:opacity-80"
+                style={{ outline: pal.id === activePaletteId ? '2px solid var(--p8-yellow)' : undefined, outlineOffset: 2 }}
+                title={`Edit "${pal.name}"`}
+              >
+                <div className="flex gap-px">
+                  {pal.drawPalette.map((slot, s) => (
+                    <div key={s} className="w-2 h-4" style={{ background: resolveHex(projectPalette[slot]) }} />
+                  ))}
+                </div>
+                <span className="text-[var(--p8-light-grey)] ml-1">{pal.name}</span>
+              </button>
+              {anim && (
                 <button
-                  onClick={() => onApplyNamedPalette(i)}
-                  className="flex items-center gap-1 text-left hover:opacity-80"
-                  title={`Apply "${pal.name}" to draw palette`}
-                >
-                  <div className="flex gap-px">
-                    {pal.drawPalette.map((slot, s) => (
-                      <div key={s} className="w-2 h-4" style={{ background: resolveHex(projectPalette[slot]) }} />
-                    ))}
-                  </div>
-                  <span className="text-[var(--p8-light-grey)] ml-1">{pal.name}</span>
-                </button>
-                {anim && (
-                  <button
-                    onClick={() => updateFrame(activeAnimIdx!, safeFrameIdx, { palette: i })}
-                    className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-green)]"
-                    title={`Set on frame ${safeFrameIdx + 1}`}
-                  >use</button>
-                )}
-                <button onClick={() => onDuplicateNamedPalette(i)} className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]" title="Duplicate palette">⧉</button>
-                <button onClick={() => onDeleteNamedPalette(i)} className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-red)]">×</button>
-              </div>
-            ))}
-          </div>
-        )}
+                  onClick={() => updateFrame(activeAnimIdx!, safeFrameIdx, { paletteId: pal.id })}
+                  className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-green)]"
+                  title={`Set on frame ${safeFrameIdx + 1}`}
+                >use</button>
+              )}
+              <button
+                onClick={() => {
+                  const id = Math.max(0, ...palettes.map(p => p.id)) + 1
+                  const copy: NamedPalette = { id, name: pal.name + ' copy', drawPalette: [...pal.drawPalette], transparentColours: [...pal.transparentColours] }
+                  onPalettesChange([...palettes, copy])
+                  onActivePaletteIdChange(id)
+                }}
+                className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]" title="Duplicate palette"
+              >⧉</button>
+              {palettes.length > 1 && (
+                <button
+                  onClick={() => {
+                    const next = palettes.filter(p => p.id !== pal.id)
+                    onPalettesChange(next)
+                    if (pal.id === activePaletteId) onActivePaletteIdChange(next[0].id)
+                  }}
+                  className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-red)]"
+                >×</button>
+              )}
+            </div>
+          ))}
+        </div>
 
-        {/* Save current */}
+        {/* Clone as new */}
         {savingPalette ? (
           <div className="flex gap-2 items-center">
             <input
               type="text"
               value={savePaletteName}
               onChange={e => setSavePaletteName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSavePalette(); if (e.key === 'Escape') setSavingPalette(false) }}
-              placeholder={`palette ${namedPalettes.length + 1}`}
+              onKeyDown={e => { if (e.key === 'Enter') handleAddPalette(); if (e.key === 'Escape') setSavingPalette(false) }}
+              placeholder={`palette ${palettes.length + 1}`}
               autoFocus
               className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-28 outline-none focus:border-[var(--p8-yellow)]"
             />
-            <button onClick={handleSavePalette} className="text-[var(--p8-green)]">save</button>
+            <button onClick={handleAddPalette} className="text-[var(--p8-green)]">save</button>
             <button onClick={() => setSavingPalette(false)} className="text-[var(--p8-dark-grey)]">cancel</button>
           </div>
         ) : (
           <button onClick={() => setSavingPalette(true)}
             className="self-start text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]"
-          >+ save current</button>
+          >+ clone as new</button>
         )}
       </div>
 
@@ -634,7 +655,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
             ) : (
               <div className="flex flex-col gap-1">
                 {anim.frames.map((f, fi) => {
-                  const np = f.palette !== undefined ? namedPalettes[f.palette] : null
+                  const np = f.paletteId !== undefined ? palettes.find(p => p.id === f.paletteId) : null
                   const base = np ? np.drawPalette : IDENTITY
                   const palette = base.map(slot => projectPalette[slot])
                   const frameTransparent = np ? np.transparentColours : []
@@ -718,9 +739,9 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                     frameIdx={fi}
                     frame={f}
                     active={fi === safeFrameIdx}
-                    namedPalettes={namedPalettes}
+                    palettes={palettes}
                     onClick={() => { setActiveFrameIdx(fi); setPlaying(false) }}
-                    onPaletteChange={idx => updateFrame(activeAnimIdx!, fi, { palette: idx })}
+                    onPaletteChange={id => updateFrame(activeAnimIdx!, fi, { paletteId: id })}
                     onFlipToggle={() => updateFrame(activeAnimIdx!, fi, { flip: !f.flip })}
                     onDuplicate={() => duplicateFrame(fi)}
                     onDelete={() => deleteFrame(fi)}
@@ -785,16 +806,16 @@ interface FrameCardProps {
   frameIdx: number
   frame: AnimationFrame
   active: boolean
-  namedPalettes: NamedPalette[]
+  palettes: NamedPalette[]
   onClick: () => void
-  onPaletteChange: (idx: number | undefined) => void
+  onPaletteChange: (id: number | undefined) => void
   onFlipToggle: () => void
   onDuplicate: () => void
   onDelete: () => void
   canDelete: boolean
 }
 
-function FrameCard({ frameIdx, frame, active, namedPalettes, onClick, onPaletteChange, onFlipToggle, onDuplicate, onDelete, canDelete }: FrameCardProps) {
+function FrameCard({ frameIdx, frame, active, palettes, onClick, onPaletteChange, onFlipToggle, onDuplicate, onDelete, canDelete }: FrameCardProps) {
   return (
     <div
       onClick={onClick}
@@ -820,12 +841,12 @@ function FrameCard({ frameIdx, frame, active, namedPalettes, onClick, onPaletteC
       <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
         <span className="text-[var(--p8-dark-grey)]">pal</span>
         <select
-          value={frame.palette ?? ''}
+          value={frame.paletteId ?? ''}
           onChange={e => onPaletteChange(e.target.value === '' ? undefined : parseInt(e.target.value))}
           className="bg-[#111] border-2 border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] px-1 w-24"
         >
           <option value="">default</option>
-          {namedPalettes.map((p, i) => <option key={i} value={i}>{p.name}</option>)}
+          {palettes.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <button onClick={onFlipToggle} title="Flip"
           className={`px-1 border-2 ${frame.flip
@@ -977,11 +998,14 @@ function paletteStr(drawPalette: number[], projectPalette: number[]): string {
 
 function generateAnimSnippet(
   anim: Animation,
-  namedPalettes: { name: string; drawPalette: number[]; transparentColours: number[] }[],
+  palettes: NamedPalette[],
   projectPalette: number[]
 ): string {
   const { frames, w, h } = anim
   if (frames.length === 0) return '-- no frames'
+
+  const findPalette = (f: AnimationFrame) =>
+    f.paletteId !== undefined ? palettes.find(p => p.id === f.paletteId) ?? null : null
 
   const allContiguous = frames.every(f => isContiguous(f.tiles, w, h))
   const lines: string[] = []
@@ -989,7 +1013,7 @@ function generateAnimSnippet(
   if (allContiguous) {
     for (let i = 0; i < frames.length; i++) {
       const frame = frames[i]
-      const np = frame.palette !== undefined ? namedPalettes[frame.palette] : null
+      const np = findPalette(frame)
       if (np) {
         lines.push(`pal(split"${paletteStr(np.drawPalette, projectPalette)}")  -- ${np.name}`)
         const bitmask = np.transparentColours.reduce((b, c) => b | (1 << c), 0)
@@ -1016,16 +1040,16 @@ function generateAnimSnippet(
     lines.push('')
     lines.push(`local ${varName} = {`)
     for (let i = 0; i < frames.length; i++) {
-      const np = frames[i].palette !== undefined ? namedPalettes[frames[i].palette!] : null
+      const np = findPalette(frames[i])
       const comment = np ? `  -- frame ${i + 1} (${np.name})` : `  -- frame ${i + 1}`
       lines.push(`  split"${frames[i].tiles.join(',')}",${comment}`)
     }
     lines.push('}')
-    const hasPalette = frames.some(f => f.palette !== undefined)
+    const hasPalette = frames.some(f => f.paletteId !== undefined)
     if (hasPalette) {
       lines.push('')
       for (let i = 0; i < frames.length; i++) {
-        const np = frames[i].palette !== undefined ? namedPalettes[frames[i].palette!] : null
+        const np = findPalette(frames[i])
         if (np) {
           const bitmask = np.transparentColours.reduce((b, c) => b | (1 << c), 0)
           lines.push(`-- frame ${i + 1}: pal(split"${paletteStr(np.drawPalette, projectPalette)}")${bitmask !== 1 ? ` palt(${bitmask})` : ''}`)

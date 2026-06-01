@@ -1,26 +1,29 @@
 import { useMemo, useState } from 'react'
 import { STANDARD_PALETTE, SECRET_PALETTE } from '../types/cart'
+import type { NamedPalette } from '../types/cart'
 import CodeSnippet from './CodeSnippet'
 
-interface NamedPalette { name: string; drawPalette: number[] }
+const IDENTITY = Array.from({ length: 16 }, (_, i) => i)
 
 interface Props {
-  drawPalette: number[]
-  onChange: (palette: number[]) => void
+  palettes: NamedPalette[]
+  activePaletteId: number
+  onActivate: (id: number) => void
+  onUpdateActive: (patch: Partial<Pick<NamedPalette, 'drawPalette' | 'transparentColours'>>) => void
+  onAdd: (name: string) => void
+  onDelete: (id: number) => void
   projectPalette: number[]
-  namedPalettes: NamedPalette[]
-  onSavePalette: (name: string) => void
-  onDeletePalette: (index: number) => void
-  onApplyPalette: (index: number) => void
-  transparentColours: number[]
-  onTransparencyChange: (t: number[]) => void
   onHoverSlot?: (slot: number | null) => void
 }
 
-export default function PaletteEditor({ drawPalette, onChange, projectPalette, namedPalettes, onSavePalette, onDeletePalette, onApplyPalette, transparentColours, onTransparencyChange, onHoverSlot }: Props) {
+export default function PaletteEditor({ palettes, activePaletteId, onActivate, onUpdateActive, onAdd, onDelete, projectPalette, onHoverSlot }: Props) {
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
   const [saveName, setSaveName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [copied, setCopied] = useState<'verbose' | 'compact' | 'array' | 'keyed' | null>(null)
+
+  const activePalette = palettes.find(p => p.id === activePaletteId) ?? palettes[0]
+  const { drawPalette, transparentColours } = activePalette
 
   function handleSlotClick(slot: number) {
     setSelectedSlot(prev => prev === slot ? null : slot)
@@ -30,32 +33,32 @@ export default function PaletteEditor({ drawPalette, onChange, projectPalette, n
     if (selectedSlot === null) return
     const next = [...drawPalette]
     next[selectedSlot] = targetSlot
-    onChange(next)
+    onUpdateActive({ drawPalette: next })
   }
 
   function resetSlot(slot: number) {
     const next = [...drawPalette]
     next[slot] = slot
-    onChange(next)
+    onUpdateActive({ drawPalette: next })
     if (selectedSlot === slot) setSelectedSlot(null)
   }
 
   function resetAll() {
-    onChange(Array.from({ length: 16 }, (_, i) => i))
+    onUpdateActive({ drawPalette: [...IDENTITY] })
     setSelectedSlot(null)
   }
 
   function toggleTransparent(slot: number) {
     if (transparentColours.includes(slot)) {
-      onTransparencyChange(transparentColours.filter(s => s !== slot))
+      onUpdateActive({ transparentColours: transparentColours.filter(s => s !== slot) })
     } else {
-      onTransparencyChange([...transparentColours, slot])
+      onUpdateActive({ transparentColours: [...transparentColours, slot] })
     }
   }
 
   function handleSave() {
-    const name = saveName.trim() || `palette ${namedPalettes.length + 1}`
-    onSavePalette(name)
+    const name = saveName.trim() || `palette ${palettes.length + 1}`
+    onAdd(name)
     setSaveName('')
     setSaving(false)
   }
@@ -64,14 +67,13 @@ export default function PaletteEditor({ drawPalette, onChange, projectPalette, n
 
   const luaSnippet = useMemo(() => generateLua(drawPalette, transparentColours), [drawPalette, transparentColours])
   const luaCompact  = useMemo(() => generateLuaCompact(drawPalette, transparentColours), [drawPalette, transparentColours])
-  const [copied, setCopied] = useState<'verbose' | 'compact' | 'array' | 'keyed' | null>(null)
 
   function handleCopy(which: 'verbose' | 'compact' | 'array' | 'keyed') {
     let text = ''
     if (which === 'verbose') text = luaSnippet
     else if (which === 'compact') text = luaCompact
-    else if (which === 'array') text = generateNamedPalettesArray(namedPalettes, projectPalette)
-    else text = generateNamedPalettesKeyed(namedPalettes, projectPalette)
+    else if (which === 'array') text = generateNamedPalettesArray(palettes, projectPalette)
+    else text = generateNamedPalettesKeyed(palettes, projectPalette)
     navigator.clipboard.writeText(text)
     setCopied(which)
     setTimeout(() => setCopied(null), 1500)
@@ -164,12 +166,13 @@ export default function PaletteEditor({ drawPalette, onChange, projectPalette, n
       <div className="flex flex-col gap-2 border-t-2 border-[var(--p8-dark-grey)] pt-3">
         <span className="text-[var(--p8-light-grey)]">named palettes</span>
 
-        {namedPalettes.map((pal, i) => (
-          <div key={i} className="flex items-center gap-2">
+        {palettes.map(pal => (
+          <div key={pal.id} className="flex items-center gap-2">
             <button
-              onClick={() => onApplyPalette(i)}
+              onClick={() => onActivate(pal.id)}
               className="flex items-center gap-1 flex-1 text-left hover:opacity-80"
-              title={`Apply "${pal.name}"`}
+              style={{ outline: pal.id === activePaletteId ? '2px solid var(--p8-yellow)' : undefined, outlineOffset: 2 }}
+              title={`Edit "${pal.name}"`}
             >
               <div className="flex gap-px">
                 {pal.drawPalette.slice(0, 8).map((slotIdx, s) => (
@@ -178,11 +181,13 @@ export default function PaletteEditor({ drawPalette, onChange, projectPalette, n
               </div>
               <span className="text-[var(--p8-light-grey)] ml-1">{pal.name}</span>
             </button>
-            <button
-              onClick={() => onDeletePalette(i)}
-              className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-red)]"
-              title="Delete"
-            >×</button>
+            {palettes.length > 1 && (
+              <button
+                onClick={() => onDelete(pal.id)}
+                className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-red)]"
+                title="Delete"
+              >×</button>
+            )}
           </div>
         ))}
 
@@ -193,7 +198,7 @@ export default function PaletteEditor({ drawPalette, onChange, projectPalette, n
               value={saveName}
               onChange={e => setSaveName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setSaving(false) }}
-              placeholder={`palette ${namedPalettes.length + 1}`}
+              placeholder={`palette ${palettes.length + 1}`}
               autoFocus
               className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-28 outline-none focus:border-[var(--p8-yellow)]"
             />
@@ -205,17 +210,17 @@ export default function PaletteEditor({ drawPalette, onChange, projectPalette, n
             onClick={() => setSaving(true)}
             className="self-start text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]"
           >
-            + save current
+            + clone as new
           </button>
         )}
       </div>
 
       {/* Named palette export */}
-      {namedPalettes.length > 0 && (
+      {palettes.length > 1 && (
         <div className="flex flex-col gap-3 border-t-2 border-[var(--p8-dark-grey)] pt-3">
           <span className="text-[var(--p8-light-grey)]">export palettes</span>
-          <CodeSnippet code={generateNamedPalettesArray(namedPalettes, projectPalette)} label="array" onCopy={() => handleCopy('array')} copied={copied === 'array'} />
-          <CodeSnippet code={generateNamedPalettesKeyed(namedPalettes, projectPalette)} label="keyed" onCopy={() => handleCopy('keyed')} copied={copied === 'keyed'} />
+          <CodeSnippet code={generateNamedPalettesArray(palettes, projectPalette)} label="array" onCopy={() => handleCopy('array')} copied={copied === 'array'} />
+          <CodeSnippet code={generateNamedPalettesKeyed(palettes, projectPalette)} label="keyed" onCopy={() => handleCopy('keyed')} copied={copied === 'keyed'} />
         </div>
       )}
 
@@ -243,21 +248,21 @@ function rotate(palette: number[]): number[] {
   return [...palette.slice(1), palette[0]]
 }
 
-function generateNamedPalettesArray(namedPalettes: { name: string; drawPalette: number[] }[], projectPalette: number[]): string {
+function generateNamedPalettesArray(palettes: NamedPalette[], projectPalette: number[]): string {
   const lines = ['local pals = {']
-  for (const p of namedPalettes) {
+  for (const p of palettes) {
     const colours = p.drawPalette.map(slot => projectPalette[slot])
     lines.push(`  split"${rotate(colours).join(',')}",  -- ${p.name}`)
   }
   lines.push('}')
-  const indices = namedPalettes.map((p, i) => `-- pal(pals[${i + 1}])  -- ${p.name}`).join('\n')
+  const indices = palettes.map((p, i) => `-- pal(pals[${i + 1}])  -- ${p.name}`).join('\n')
   lines.push(indices)
   return lines.join('\n')
 }
 
-function generateNamedPalettesKeyed(namedPalettes: { name: string; drawPalette: number[] }[], projectPalette: number[]): string {
+function generateNamedPalettesKeyed(palettes: NamedPalette[], projectPalette: number[]): string {
   const lines = ['local pals = {}']
-  for (const p of namedPalettes) {
+  for (const p of palettes) {
     const colours = p.drawPalette.map(slot => projectPalette[slot])
     lines.push(`pals["${p.name}"] = split"${rotate(colours).join(',')}"`)
   }

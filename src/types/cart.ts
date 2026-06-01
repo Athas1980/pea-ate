@@ -11,10 +11,17 @@ export interface Cart {
   extraSections?: Record<string, string>
 }
 
+export interface NamedPalette {
+  id: number
+  name: string
+  drawPalette: number[]
+  transparentColours: number[]
+}
+
 export interface AnimationFrame {
-  tiles: number[]      // flat W×H array of sprite indices
-  palette?: number     // index into namedPalettes
-  flip?: boolean       // render-only: whole frame reversed left-to-right
+  tiles: number[]        // flat W×H array of sprite indices
+  paletteId?: number     // id of a NamedPalette
+  flip?: boolean         // render-only: whole frame reversed left-to-right
 }
 
 export interface Animation {
@@ -30,18 +37,16 @@ export interface Animation {
 export interface PaletteToolData {
   /** Screen palette: projectPalette[i] = which Pico-8 colour slot i maps to (0–15 standard, 128–143 secret). Defaults to identity [0..15]. */
   projectPalette?: number[]
-  /** drawPalette[i] = project palette slot index (0–15) that slot i remaps to when drawing */
-  drawPalette: number[]
+  /** All named palettes, including the active working palette. */
+  namedPalettes?: NamedPalette[]
+  /** id of the currently active palette in namedPalettes. */
+  activePaletteId?: number
   /** true = render all 128×64 map tiles (bottom 32 rows share memory with bottom half of gfx) */
   useSharedMap: boolean
   /** true = render tile index 0; false = render it as black (matches Pico-8 default transparency) */
   showZeroTile: boolean
   /** label colour remaps: maps original label index (0-31) to replacement index (0-31) */
   labelPalette?: Record<number, number>
-  /** saved palette snapshots for comparison in the sprite inspector */
-  namedPalettes?: Array<{ name: string; drawPalette: number[]; transparentColours?: number[] }>
-  /** draw palette slot indices (0–15) that are treated as transparent (current working state) */
-  transparentColours?: number[]
   /** map width in tiles — 0 means 256, defaults to 128 (poke(0x5f57, n)) */
   mapWidth?: number
   /** saved animations */
