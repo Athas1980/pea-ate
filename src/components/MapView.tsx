@@ -276,16 +276,16 @@ export default function MapView({
         <button
           onClick={() => setZoom(z => Math.max(MIN_ZOOM, z - 1))}
           disabled={zoom === MIN_ZOOM}
-          className="w-6 h-6 text-center text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
+          className="w-6 h-6 text-center text-[var(--p8-white)] disabled:text-[var(--p8-lavender)]"
         >-</button>
         <span className="text-[var(--p8-light-grey)] w-6 text-center">{zoom}×</span>
         <button
           onClick={() => setZoom(z => Math.min(MAX_ZOOM, z + 1))}
           disabled={zoom === MAX_ZOOM}
-          className="w-6 h-6 text-center text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
+          className="w-6 h-6 text-center text-[var(--p8-white)] disabled:text-[var(--p8-lavender)]"
         >+</button>
 
-        <span className="text-[var(--p8-dark-grey)]">·</span>
+        <span className="text-[var(--p8-lavender)]">·</span>
 
         <button
           onClick={() => onModeChange(mode === 'view' ? 'edit' : 'view')}
@@ -304,14 +304,14 @@ export default function MapView({
             className={`px-2 py-0.5 border-2 ${
               showGrid
                 ? 'border-[var(--p8-light-grey)] text-[var(--p8-light-grey)]'
-                : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+                : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-white)] hover:text-[var(--p8-white)]'
             }`}
           >grid</button>
         )}
 
         {mode === 'edit' && (
           <>
-            <span className="text-[var(--p8-dark-grey)]">·</span>
+            <span className="text-[var(--p8-lavender)]">·</span>
             {(['brush', 'eraser', 'fill'] as const).map(tool => (
               <button
                 key={tool}
@@ -319,13 +319,13 @@ export default function MapView({
                 className={`px-2 py-0.5 border-2 ${
                   mapTool.tool === tool
                     ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
-                    : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+                    : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-white)] hover:text-[var(--p8-white)]'
                 }`}
               >{tool}</button>
             ))}
             {mapTool.tool === 'eraser' && (
               <>
-                <span className="text-[var(--p8-dark-grey)]">·</span>
+                <span className="text-[var(--p8-lavender)]">·</span>
                 {[1, 2, 3, 4].map(s => (
                   <button
                     key={s}
@@ -333,7 +333,7 @@ export default function MapView({
                     className={`w-6 h-6 border-2 text-center text-sm ${
                       mapTool.eraserSize === s
                         ? 'border-[var(--p8-light-grey)] text-[var(--p8-white)]'
-                        : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+                        : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-white)] hover:text-[var(--p8-white)]'
                     }`}
                   >{s}</button>
                 ))}
@@ -341,13 +341,13 @@ export default function MapView({
             )}
             {mapTool.tool === 'fill' && (
               <>
-                <span className="text-[var(--p8-dark-grey)]">·</span>
+                <span className="text-[var(--p8-lavender)]">·</span>
                 <button
                   onClick={() => onToolChange?.({ fillRandom: !mapTool.fillRandom })}
                   className={`px-2 py-0.5 border-2 ${
                     mapTool.fillRandom
                       ? 'border-[var(--p8-light-grey)] text-[var(--p8-white)]'
-                      : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+                      : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-white)] hover:text-[var(--p8-white)]'
                   }`}
                 >random</button>
               </>
@@ -362,7 +362,7 @@ export default function MapView({
       </div>
 
       {/* Config / status row */}
-      <div className="flex items-center gap-2 text-[var(--p8-dark-grey)]">
+      <div className="flex items-center gap-2 text-[var(--p8-light-grey)]">
         <span>Width</span>
         <input
           type="number"
@@ -436,7 +436,7 @@ export default function MapView({
       </div>
 
       {mode === 'view' && (
-        <span className="text-[var(--p8-dark-grey)]">drag to pan · shift+scroll →</span>
+        <span className="text-[var(--p8-lavender)]">drag to pan · shift+scroll →</span>
       )}
     </div>
   )

@@ -84,7 +84,7 @@ export default function PaletteEditor({ palettes, activePaletteId, onActivate, o
       {/* Source slots + picker grouped so picker can centre under the grid */}
       <div className="flex flex-col gap-3 w-fit">
         <div className="flex flex-col gap-1">
-          <span className="text-[var(--p8-light-grey)] mb-1">draw palette</span>
+          <h2 className="text-[12px] text-[var(--p8-white)]">Draw Palette</h2>
           <div className="grid grid-cols-8 gap-px items-start">
             {drawPalette.map((targetSlot, slot) => {
               const remapped = targetSlot !== slot
@@ -109,7 +109,8 @@ export default function PaletteEditor({ palettes, activePaletteId, onActivate, o
                   >
                     {transparentColours.includes(slot) && (
                       <div className="absolute inset-0" style={{
-                        backgroundImage: 'linear-gradient(45deg, #fff2 25%, transparent 25%, transparent 75%, #fff2 75%), linear-gradient(45deg, #fff2 25%, transparent 25%, transparent 75%, #fff2 75%)',
+                        backgroundImage: 'linear-gradient(45deg, rgba(0,0,0,0.3) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.3) 75%), linear-gradient(45deg, rgba(0,0,0,0.3) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.3) 75%)',
+                        backgroundColor: 'rgba(255,255,255,0.2)',
                         backgroundSize: '6px 6px',
                         backgroundPosition: '0 0, 3px 3px',
                       }} />
@@ -129,13 +130,16 @@ export default function PaletteEditor({ palettes, activePaletteId, onActivate, o
               <span className="text-[var(--p8-light-grey)]">
                 slot {selectedSlot} → slot {drawPalette[selectedSlot]}
               </span>
-              <button
-                onClick={() => toggleTransparent(selectedSlot)}
-                className={transparentColours.includes(selectedSlot) ? 'text-[var(--p8-yellow)]' : 'text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'}
-                title="Toggle transparency"
-              >
-                {transparentColours.includes(selectedSlot) ? 'transparent' : 'opaque'}
-              </button>
+              <div className="flex">
+                <button
+                  onClick={() => onUpdateActive({ transparentColours: transparentColours.filter(s => s !== selectedSlot) })}
+                  className={`px-2 py-0.5 border-2 ${!transparentColours.includes(selectedSlot) ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]' : 'border-[var(--p8-dark-grey)] border-r-[var(--p8-yellow)] text-[var(--p8-light-grey)]'}`}
+                >opaque</button>
+                <button
+                  onClick={() => onUpdateActive({ transparentColours: [...transparentColours, selectedSlot] })}
+                  className={`px-2 py-0.5 border-2 border-l-0 ${transparentColours.includes(selectedSlot) ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]' : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)]'}`}
+                >transparent</button>
+              </div>
             </div>
             <div className="grid grid-cols-8 gap-px">
               {projectPalette.map((colourIdx, slotIdx) => (
@@ -157,14 +161,14 @@ export default function PaletteEditor({ palettes, activePaletteId, onActivate, o
       </div>
 
       {anyRemapped && (
-        <button onClick={resetAll} className="self-start text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]">
+        <button onClick={resetAll} className="self-start text-[var(--p8-light-grey)] hover:text-[var(--p8-red)]">
           reset all
         </button>
       )}
 
       {/* Named palettes */}
       <div className="flex flex-col gap-2 border-t-2 border-[var(--p8-dark-grey)] pt-3">
-        <span className="text-[var(--p8-light-grey)]">named palettes</span>
+        <h2 className="text-[12px] text-[var(--p8-white)]">Named Palettes</h2>
 
         {palettes.map(pal => (
           <div key={pal.id} className="flex items-center gap-2">
@@ -184,7 +188,7 @@ export default function PaletteEditor({ palettes, activePaletteId, onActivate, o
             {palettes.length > 1 && (
               <button
                 onClick={() => onDelete(pal.id)}
-                className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-red)]"
+                className="text-[var(--p8-light-grey)] hover:text-[var(--p8-red)]"
                 title="Delete"
               >×</button>
             )}
@@ -203,7 +207,7 @@ export default function PaletteEditor({ palettes, activePaletteId, onActivate, o
               className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-28 outline-none focus:border-[var(--p8-yellow)]"
             />
             <button onClick={handleSave} className="text-[var(--p8-green)]">save</button>
-            <button onClick={() => setSaving(false)} className="text-[var(--p8-dark-grey)]">cancel</button>
+            <button onClick={() => setSaving(false)} className="text-[var(--p8-light-grey)]">cancel</button>
           </div>
         ) : (
           <button
@@ -218,7 +222,7 @@ export default function PaletteEditor({ palettes, activePaletteId, onActivate, o
       {/* Named palette export */}
       {palettes.length > 1 && (
         <div className="flex flex-col gap-3 border-t-2 border-[var(--p8-dark-grey)] pt-3">
-          <span className="text-[var(--p8-light-grey)]">export palettes</span>
+          <h2 className="text-[12px] text-[var(--p8-white)]">Export Palettes</h2>
           <CodeSnippet code={generateNamedPalettesArray(palettes, projectPalette)} label="array" onCopy={() => handleCopy('array')} copied={copied === 'array'} />
           <CodeSnippet code={generateNamedPalettesKeyed(palettes, projectPalette)} label="keyed" onCopy={() => handleCopy('keyed')} copied={copied === 'keyed'} />
         </div>
@@ -226,9 +230,9 @@ export default function PaletteEditor({ palettes, activePaletteId, onActivate, o
 
       {/* Lua snippet */}
       <div className="flex flex-col gap-3 border-t-2 border-[var(--p8-dark-grey)] pt-3">
-        <span className="text-[var(--p8-light-grey)]">lua</span>
+        <h2 className="text-[12px] text-[var(--p8-white)]">Lua</h2>
         {!luaSnippet && !luaCompact ? (
-          <span className="text-[var(--p8-dark-grey)]">-- default palette</span>
+          <span className="text-[var(--p8-lavender)]">-- default palette</span>
         ) : (
           <>
             <CodeSnippet code={luaSnippet || '-- default palette'} label="verbose" onCopy={() => handleCopy('verbose')} copied={copied === 'verbose'} />

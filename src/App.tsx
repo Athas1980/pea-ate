@@ -257,7 +257,7 @@ export default function App() {
         ) : (
           <>
             {tab === 'spritesheet' && (
-              <div className="flex gap-6 items-start">
+              <div className="flex gap-6 items-start max-w-5xl">
                 <SpritesheetView
                   gfx={cart.gfx}
                   drawPalette={projectPalette}
@@ -320,7 +320,7 @@ export default function App() {
               />
             )}
             {tab === 'label' && cart.label && (
-              <div className="flex gap-6 items-start">
+              <div className="flex gap-6 items-start max-w-5xl">
                 <LabelView label={cart.label} labelPalette={labelPalette} />
                 <LabelPaletteEditor
                   label={cart.label}
@@ -393,7 +393,7 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
       onDragOver={e => { e.preventDefault(); setDragging(true) }}
       onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}
-      className={`flex flex-col items-center justify-center border-2 border-dashed p-16 transition-colors ${
+      className={`flex flex-col items-center justify-center border-2 border-dashed p-16 min-h-full transition-colors ${
         dragging
           ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
           : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)]'
@@ -412,19 +412,23 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
             <button
               onClick={() => loadSample(s.file)}
               disabled={loadingFile !== null}
-              className="text-[var(--p8-blue)] hover:text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
+              className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] disabled:text-[var(--p8-lavender)]"
             >
               {loadingFile === s.file ? 'loading...' : s.label}
             </button>
-            <span className="text-[var(--p8-dark-grey)]">by {s.author}</span>
+            <span className="text-[var(--p8-lavender)]">by {s.author}</span>
             {s.url && (
               <a
                 href={s.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-white)]"
+                className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]"
                 title="View source"
-              >↗</a>
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                  <path d="M3 1h6v6M9 1L1 9" />
+                </svg>
+              </a>
             )}
           </div>
         ))}
@@ -432,7 +436,7 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
           href={SUGGEST_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-white)] mt-2"
+          className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] mt-2"
         >
           + suggest a sample cart
         </a>

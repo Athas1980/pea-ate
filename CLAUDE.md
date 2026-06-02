@@ -191,6 +191,60 @@ For secret palette access: `pal(c, 128+n)` remaps draw colour c to secret colour
 - Right-click a remapped slot to reset just that slot
 - "Reset all" button appears when any slot is remapped
 
+## UI design language
+
+### Colours (CSS variables)
+- **`--p8-white`** — section headings, active/selected element labels
+- **`--p8-light-grey`** — secondary text, inactive button labels, functional UI labels
+- **`--p8-lavender`** — decorative/status text (fps readout, frame counter, drag hints)
+- **`--p8-dark-grey`** — borders, dividers
+- **`--p8-yellow`** — active state for toggles/selectors; selected outline on swatches
+- **`--p8-green`** — confirm/apply actions (save, use palette on frame, apply resize)
+- **`--p8-red`** — destructive hover state (delete, reset all, ×)
+
+### Section headings
+All section headers use `<h2 className="text-[12px] text-[var(--p8-white)]">`. No larger heading sizes in the UI chrome.
+
+### Button hierarchy
+**Bordered** — primary actions, mode toggles, and any action button that sits alongside other bordered controls:
+```
+px-2 py-0.5 border-2 border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)]
+  hover:border-[var(--p8-white)] hover:text-[var(--p8-white)]
+```
+- Active/on state: `border-[var(--p8-yellow)] text-[var(--p8-yellow)]`
+- Destructive hover: `hover:border-[var(--p8-red)] hover:text-[var(--p8-red)]`
+- Confirm hover: `hover:border-[var(--p8-green)] hover:text-[var(--p8-green)]`
+
+**Bare text** — secondary/housekeeping actions (+ add frame, + clone as new, ⧉, ×):
+```
+text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]
+```
+- Destructive bare: `hover:text-[var(--p8-red)]`
+
+### Segmented controls
+Binary named-state toggles (e.g. opaque/transparent) use a shared-border pair. Active: yellow border + text. Inactive: dark-grey border + light-grey text. The shared edge between the two buttons is always yellow — give the inactive left button `border-r-[var(--p8-yellow)]`.
+
+### Transparency indicator
+Transparent palette slots show a dual-tint checkerboard overlay (visible on both dark and bright colours):
+```jsx
+backgroundImage: 'linear-gradient(45deg, rgba(0,0,0,0.3) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.3) 75%), linear-gradient(45deg, rgba(0,0,0,0.3) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.3) 75%)',
+backgroundColor: 'rgba(255,255,255,0.2)',
+backgroundSize: '6px 6px',
+backgroundPosition: '0 0, 3px 3px',
+```
+
+### Palette boxes
+Draw palette + slot picker share one `border-2 border-[var(--p8-dark-grey)]` container. The picker opens below with a `border-t-2` divider — it shares the outer border rather than nesting a second box.
+
+### Layout
+- Spritesheet, Label, and Animation tab wrappers use `max-w-5xl`. Map is unconstrained — dense data benefits from full width.
+- Bordered component boxes (frame cards, Props panel) use `bg-black`.
+
+### Press Start 2P in scrollable flex lists
+In `flex flex-col` containers with `overflow-y-auto` + `max-h-*`, list items need two things:
+- `shrink-0` — without it, flex compresses items to fit the container instead of scrolling
+- `leading-none` — clamps line-height to font-size; the font's vertical metrics otherwise bleed into adjacent rows
+
 ## Canvas rendering
 
 - Use `<canvas>` elements directly with `ImageData` for pixel-perfect rendering

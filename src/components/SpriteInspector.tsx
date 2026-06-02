@@ -107,7 +107,7 @@ export default function SpriteInspector({ gfx, drawPalette, projectPalette, name
     <div className="flex flex-col gap-4">
       <div className="flex gap-6 items-start">
         <div className="flex flex-col gap-2">
-          <span className="text-[var(--p8-light-grey)]">spritesheet</span>
+          <h2 className="text-[12px] text-[var(--p8-white)]">Spritesheet</h2>
           <canvas
             ref={sheetRef}
             width={128} height={128}
@@ -137,7 +137,7 @@ export default function SpriteInspector({ gfx, drawPalette, projectPalette, name
 
       {namedPalettes.length > 0 && (
         <div className="flex flex-col gap-2">
-          <span className="text-[var(--p8-light-grey)]">named palettes</span>
+          <h2 className="text-[12px] text-[var(--p8-white)]">Named Palettes</h2>
           <div className="flex gap-4 flex-wrap">
             {namedPalettes.map((pal, i) => (
               <Thumbnail

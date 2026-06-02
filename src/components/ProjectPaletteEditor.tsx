@@ -50,7 +50,7 @@ export default function ProjectPaletteEditor({ projectPalette, onChange, onHover
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 w-fit">
         <div className="flex flex-col gap-1">
-          <span className="text-[var(--p8-light-grey)] mb-1">project palette</span>
+          <h2 className="text-[12px] text-[var(--p8-white)]">Project Palette</h2>
           <div className="grid grid-cols-8 gap-px items-start">
             {projectPalette.map((colourIdx, slot) => {
               const changed = colourIdx !== slot
@@ -102,9 +102,9 @@ export default function ProjectPaletteEditor({ projectPalette, onChange, onHover
       )}
 
       <div className="flex flex-col gap-3 border-t-2 border-[var(--p8-dark-grey)] pt-3">
-        <span className="text-[var(--p8-light-grey)]">lua (screen palette)</span>
+        <h2 className="text-[12px] text-[var(--p8-white)]">Lua (Screen Palette)</h2>
         {!anyChanged ? (
-          <span className="text-[var(--p8-dark-grey)]">-- default project palette</span>
+          <span className="text-[var(--p8-lavender)]">-- default project palette</span>
         ) : (
           <>
             <CodeSnippet code={snippet} label="verbose" onCopy={() => handleCopy('verbose')} copied={copied === 'verbose'} />

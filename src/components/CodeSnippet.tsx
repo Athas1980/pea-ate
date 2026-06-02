@@ -21,7 +21,7 @@ export default function CodeSnippet({ code, label, onCopy, copied }: Props) {
     <div className="flex flex-col gap-1">
       {(label || onCopy) && (
         <div className="flex items-center justify-between">
-          {label && <span className="text-[var(--p8-dark-grey)]">{label}</span>}
+          {label && <span className="text-[var(--p8-light-grey)]">{label}</span>}
           {onCopy && (
             <button
               onClick={onCopy}
