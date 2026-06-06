@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Cart, PaletteToolData, TileBrush, MapToolState, Animation, NamedPalette } from './types/cart'
+import { STANDARD_PALETTE, SECRET_PALETTE } from './types/cart'
 import { parseP8 } from './lib/p8/parse'
 import { serialiseP8 } from './lib/p8/export'
 import { decodePngCart } from './lib/p8/stego'
@@ -54,6 +55,7 @@ export default function App() {
   const [mapMode, setMapMode] = useState<'view' | 'edit'>('view')
   const [mapTool, setMapTool] = useState<MapToolState>({ tool: 'brush', eraserSize: 1, fillRandom: false })
   const [hoverMapTile, setHoverMapTile] = useState<{ tx: number; ty: number; tileIdx: number } | null>(null)
+  const [mapBgSlot, setMapBgSlot] = useState(0)
   const [, setMapHistory] = useState<Uint8Array[]>([])
   tabRef.current = tab
   const [showHelp, setShowHelp] = useState(false)
@@ -158,8 +160,9 @@ export default function App() {
 
   function handleDeletePalette(id: number) {
     setNamedPalettes(prev => {
+      if (prev.length <= 1) return prev
       const next = prev.filter(p => p.id !== id)
-      if (id === activePaletteId && next.length > 0) setActivePaletteId(next[0].id)
+      if (id === activePaletteId) setActivePaletteId(next[0].id)
       return next
     })
   }
@@ -272,7 +275,7 @@ export default function App() {
                 <MapView
                   gfx={cart.gfx}
                   map={mapData ?? cart.map}
-                  drawPalette={resolvedPalette}
+                  drawPalette={projectPalette}
                   tileRows={cartOpts.useSharedMap ? 64 : 32}
                   showZeroTile={cartOpts.showZeroTile}
                   mapWidth={mapWidth}
@@ -286,17 +289,37 @@ export default function App() {
                   onStrokeStart={handleStrokeStart}
                   onMapChange={setMapData}
                   onHoverTile={setHoverMapTile}
+                  bgColourSlot={mapBgSlot}
                 />
                 <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-[12px] text-[var(--p8-white)]">bg colour</h2>
+                    <div className="flex flex-wrap" style={{ width: 8 * 20 }}>
+                      {projectPalette.map((colourIdx, slot) => {
+                        const hex = colourIdx >= 128 ? SECRET_PALETTE[colourIdx - 128] : STANDARD_PALETTE[colourIdx]
+                        return (
+                          <button
+                            key={slot}
+                            onClick={() => setMapBgSlot(slot)}
+                            className="w-5 h-5"
+                            style={{
+                              background: hex,
+                              outline: slot === mapBgSlot ? '2px solid var(--p8-yellow)' : '2px solid transparent',
+                              outlineOffset: '-2px',
+                            }}
+                          />
+                        )
+                      })}
+                    </div>
+                  </div>
                   {mapMode === 'edit' && (
                     <TilePicker
                       gfx={cart.gfx}
-                      drawPalette={resolvedPalette}
+                      drawPalette={projectPalette}
                       brush={tileBrush}
                       onBrushChange={setTileBrush}
                     />
                   )}
-                  <PaletteEditor {...paletteEditorProps} />
                   {mapWidth !== 128 && (
                     <div className="flex flex-col gap-2">
                       <span className="text-[var(--p8-light-grey)]">map width</span>

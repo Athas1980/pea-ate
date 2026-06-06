@@ -22,6 +22,7 @@ interface Props {
   onStrokeStart?: () => void
   onMapChange?: (newMap: Uint8Array) => void
   onHoverTile?: (tile: { tx: number; ty: number; tileIdx: number } | null) => void
+  bgColourSlot?: number
 }
 
 export default function MapView({
@@ -30,11 +31,13 @@ export default function MapView({
   mode, onModeChange,
   brush, mapTool = { tool: 'brush', eraserSize: 1, fillRandom: false }, onToolChange,
   onStrokeStart, onMapChange, onHoverTile,
+  bgColourSlot = 0,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [zoom, setZoom] = useState(2)
   const [showGrid, setShowGrid] = useState(false)
+  const [showScreenGrid, setShowScreenGrid] = useState(false)
   const [widthInput, setWidthInput] = useState(String(mapWidth))
   const isTypingRef = useRef(false)
 
@@ -50,6 +53,8 @@ export default function MapView({
   const displayRows = Math.min(Math.ceil(totalTiles / mapWidth), 4096)
   const canvasW = mapWidth * 8
   const canvasH = displayRows * 8
+  const bgIdx = drawPalette[bgColourSlot] ?? 0
+  const bgHex = bgIdx >= 128 ? SECRET_PALETTE[bgIdx - 128] : STANDARD_PALETTE[bgIdx]
 
   const isDragging = useRef(false)
   const isPainting = useRef(false)
@@ -309,6 +314,15 @@ export default function MapView({
           >grid</button>
         )}
 
+        <button
+          onClick={() => setShowScreenGrid(g => !g)}
+          className={`px-2 py-0.5 border-2 ${
+            showScreenGrid
+              ? 'border-[var(--p8-light-grey)] text-[var(--p8-light-grey)]'
+              : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-white)] hover:text-[var(--p8-white)]'
+          }`}
+        >screens</button>
+
         {mode === 'edit' && (
           <>
             <span className="text-[var(--p8-lavender)]">·</span>
@@ -406,7 +420,7 @@ export default function MapView({
           cursor: mode === 'edit' ? 'crosshair' : 'grab',
         }}
       >
-        <div className="relative inline-block">
+        <div className="relative inline-block" style={{ background: bgHex }}>
           <canvas
             ref={canvasRef}
             width={canvasW}
@@ -429,6 +443,20 @@ export default function MapView({
               ))}
               {Array.from({ length: displayRows - 1 }, (_, i) => (
                 <line key={`h${i}`} x1={0} y1={(i + 1) * 8 * zoom} x2={canvasW * zoom} y2={(i + 1) * 8 * zoom} stroke="rgba(255,255,255,0.75)" strokeWidth={1} shapeRendering="crispEdges" />
+              ))}
+            </svg>
+          )}
+          {showScreenGrid && (
+            <svg
+              className="absolute inset-0 pointer-events-none"
+              width={canvasW * zoom} height={canvasH * zoom}
+              style={{ overflow: 'visible' }}
+            >
+              {Array.from({ length: Math.floor(mapWidth / 16) - 1 }, (_, i) => (
+                <line key={`sv${i}`} x1={(i + 1) * 16 * 8 * zoom} y1={0} x2={(i + 1) * 16 * 8 * zoom} y2={canvasH * zoom} stroke="rgba(255,200,0,0.6)" strokeWidth={1} shapeRendering="crispEdges" />
+              ))}
+              {Array.from({ length: Math.floor(displayRows / 16) - 1 }, (_, i) => (
+                <line key={`sh${i}`} x1={0} y1={(i + 1) * 16 * 8 * zoom} x2={canvasW * zoom} y2={(i + 1) * 16 * 8 * zoom} stroke="rgba(255,200,0,0.6)" strokeWidth={1} shapeRendering="crispEdges" />
               ))}
             </svg>
           )}
