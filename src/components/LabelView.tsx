@@ -17,6 +17,25 @@ export const COLOR_TABLE_HEX: readonly string[] = [
   ...SECRET_PALETTE,
 ]
 
+/** Renders a 128x128 label (indices 0-31) to a PNG data URL for thumbnails. */
+export function labelToDataURL(label: Uint8Array): string {
+  const canvas = document.createElement('canvas')
+  canvas.width = 128
+  canvas.height = 128
+  const ctx = canvas.getContext('2d')!
+  const imageData = ctx.createImageData(128, 128)
+  for (let i = 0; i < 128 * 128; i++) {
+    const [r, g, b] = COLOR_TABLE[label[i] & 0x1f]
+    const out = i * 4
+    imageData.data[out] = r
+    imageData.data[out + 1] = g
+    imageData.data[out + 2] = b
+    imageData.data[out + 3] = 255
+  }
+  ctx.putImageData(imageData, 0, 0)
+  return canvas.toDataURL()
+}
+
 export default function LabelView({ label, labelPalette }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
