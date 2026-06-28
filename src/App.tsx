@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Cart, PaletteToolData, TileBrush, MapToolState, Animation, NamedPalette } from './types/cart'
 import { STANDARD_PALETTE, SECRET_PALETTE } from './types/cart'
 import { parseP8 } from './lib/p8/parse'
@@ -7,7 +7,6 @@ import { decodePngCart } from './lib/p8/stego'
 import SpritesheetView from './components/SpritesheetView'
 import MapView from './components/MapView'
 import TilePicker from './components/TilePicker'
-import PaletteEditor from './components/PaletteEditor'
 import CartOptions from './components/CartOptions'
 import LabelView from './components/LabelView'
 import LabelPaletteEditor from './components/LabelPaletteEditor'
@@ -25,9 +24,6 @@ function makeDefaultPalette(): NamedPalette {
   return { id: 1, name: 'default', drawPalette: [...IDENTITY_PALETTE], transparentColours: [] }
 }
 
-function nextId(palettes: NamedPalette[]): number {
-  return Math.max(0, ...palettes.map(p => p.id)) + 1
-}
 
 
 interface CartOpts {
@@ -135,47 +131,7 @@ export default function App() {
     URL.revokeObjectURL(url)
   }
 
-  const activePalette = useMemo(
-    () => namedPalettes.find(p => p.id === activePaletteId) ?? namedPalettes[0],
-    [namedPalettes, activePaletteId]
-  )
-
-  const resolvedPalette = useMemo(
-    () => activePalette.drawPalette.map(slot => projectPalette[slot]),
-    [activePalette, projectPalette]
-  )
-
   const tabs = ['spritesheet', 'map', ...(cart?.label ? ['label'] : []), 'animation', 'options'] as Tab[]
-
-  function handleUpdateActivePalette(patch: Partial<Pick<NamedPalette, 'drawPalette' | 'transparentColours'>>) {
-    setNamedPalettes(prev => prev.map(p => p.id === activePaletteId ? { ...p, ...patch } : p))
-  }
-
-  function handleAddPalette(name: string) {
-    const id = nextId(namedPalettes)
-    const newPalette: NamedPalette = { id, name, drawPalette: [...activePalette.drawPalette], transparentColours: [...activePalette.transparentColours] }
-    setNamedPalettes(prev => [...prev, newPalette])
-    setActivePaletteId(id)
-  }
-
-  function handleDeletePalette(id: number) {
-    setNamedPalettes(prev => {
-      if (prev.length <= 1) return prev
-      const next = prev.filter(p => p.id !== id)
-      if (id === activePaletteId) setActivePaletteId(next[0].id)
-      return next
-    })
-  }
-
-  const paletteEditorProps = {
-    palettes: namedPalettes,
-    activePaletteId,
-    onActivate: setActivePaletteId,
-    onUpdateActive: handleUpdateActivePalette,
-    onAdd: handleAddPalette,
-    onDelete: handleDeletePalette,
-    projectPalette,
-  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">

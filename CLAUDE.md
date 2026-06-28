@@ -1,5 +1,10 @@
 # pea-ate
 
+## Pending / deferred
+
+- **Manual named-palette editing** — the `PaletteEditor` component (hand-editing the active named palette's draw remaps + per-slot transparency) was removed after the identity-palette refactor left it orphaned (rendered nowhere; its App.tsx handlers fed nothing). Named palettes are still created/applied via `SpriteInspector` and managed in `AnimationView`, and the project/screen palette is edited via `ProjectPaletteEditor` — but there is currently no dedicated UI to hand-edit a named palette's colours/transparency. Also note the active named palette does **not** feed canvas rendering (canvases use `projectPalette` directly), so reviving manual editing is a deliberate feature, not just re-rendering the old component. Old component recoverable from git history (pre-removal).
+- **Custom element root tags** — change each component's root `<div>` to a kebab-case custom element matching the component name (e.g. `AnimationView` → `<animation-view>`). Purely for DevTools readability; no behaviour change. Requires a `src/custom-elements.d.ts` declaring each name in `JSX.IntrinsicElements`. Consider extracting top-level layout into `grid-template-areas` CSS at the same time, which would enable live layout tweaking in DevTools.
+
 A browser-only SPA for loading Pico-8 carts, viewing and editing the spritesheet and map, swapping palette colours, and inspecting sprites. No backend. Exports modified `.p8` files with palette metadata stored in a custom data block.
 
 **Design philosophy:** Not constrained to match Pico-8's built-in editor capabilities. Go beyond where it makes sense — features like random fill, custom map width, multi-tile brushes, and flood fill are valid even though the built-in editor doesn't have them.
