@@ -1,6 +1,6 @@
 # pea-ate
 
-A browser-only Pico-8 cart editor. Load a `.p8` or `.p8.png` file, view and edit the spritesheet and map, swap palette colours, and export a modified `.p8` with your changes baked in.
+A browser-only Pico-8 cart editor. Load a `.p8` file, view and edit the spritesheet and map, swap palette colours, and export a modified `.p8` with your changes baked in.
 
 **[Try it online](https://pea-ate.netlify.app)**
 
@@ -12,7 +12,7 @@ A browser-only Pico-8 cart editor. Load a `.p8` or `.p8.png` file, view and edit
 - **Label view** — view and remap colours in the cart's cover image
 - **Sprite inspector** — select a region of the spritesheet and compare it against saved palettes
 - **Export `.p8`** — writes a `__meta:pea-ate__` block to preserve your palette settings across sessions, and generates `pal()` Lua snippets ready to paste into your cart
-- **Drag & drop** — supports both `.p8` text carts and `.p8.png` steganographic carts
+- **Drag & drop** — load `.p8` text carts
 
 ## Running locally
 

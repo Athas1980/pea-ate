@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Cart, PaletteToolData, TileBrush, MapToolState, Animation } from './types/cart'
+import { useEffect, useRef, useState } from 'react'
+import type { Cart, PaletteToolData, TileBrush, MapToolState, Animation, NamedPalette } from './types/cart'
+import { STANDARD_PALETTE, SECRET_PALETTE } from './types/cart'
 import { parseP8 } from './lib/p8/parse'
 import { serialiseP8 } from './lib/p8/export'
-import { decodePngCart } from './lib/p8/stego'
 import SpritesheetView from './components/SpritesheetView'
 import MapView from './components/MapView'
 import TilePicker from './components/TilePicker'
-import PaletteEditor from './components/PaletteEditor'
 import CartOptions from './components/CartOptions'
 import LabelView from './components/LabelView'
 import LabelPaletteEditor from './components/LabelPaletteEditor'
@@ -17,18 +16,14 @@ import CodeSnippet from './components/CodeSnippet'
 
 type Tab = 'spritesheet' | 'map' | 'label' | 'animation' | 'options'
 
-interface NamedPalette { name: string; drawPalette: number[]; transparentColours: number[] }
-
 const IDENTITY_PALETTE = Array.from({ length: 16 }, (_, i) => i)
 const DEFAULT_PROJECT_PALETTE = Array.from({ length: 16 }, (_, i) => i)
 
-function migrateSlotPalette(pal: number[], projectPalette: number[]): number[] {
-  return pal.map((v, i) => {
-    if (v < 16) return v
-    const slot = projectPalette.indexOf(v)
-    return slot >= 0 ? slot : i
-  })
+function makeDefaultPalette(): NamedPalette {
+  return { id: 1, name: 'default', drawPalette: [...IDENTITY_PALETTE], transparentColours: [] }
 }
+
+
 
 interface CartOpts {
   useSharedMap: boolean
@@ -41,12 +36,12 @@ export default function App() {
   const [cart, setCart] = useState<Cart | null>(null)
   const [filename, setFilename] = useState<string>('cart.p8')
   const [tab, setTab] = useState<Tab>('spritesheet')
+  const tabRef = useRef<Tab>('spritesheet')
   const [projectPalette, setProjectPalette] = useState<number[]>(DEFAULT_PROJECT_PALETTE)
-  const [drawPalette, setDrawPalette] = useState<number[]>(IDENTITY_PALETTE)
+  const [namedPalettes, setNamedPalettes] = useState<NamedPalette[]>(() => [makeDefaultPalette()])
+  const [activePaletteId, setActivePaletteId] = useState<number>(1)
   const [labelPalette, setLabelPalette] = useState<Record<number, number>>({})
   const [cartOpts, setCartOpts] = useState<CartOpts>(DEFAULT_OPTS)
-  const [namedPalettes, setNamedPalettes] = useState<NamedPalette[]>([])
-  const [transparentColours, setTransparentColours] = useState<number[]>([])
   const [animations, setAnimations] = useState<Animation[]>([])
   const [mapData, setMapData] = useState<Uint8Array | null>(null)
   const [mapWidth, setMapWidth] = useState<number>(128)
@@ -55,8 +50,11 @@ export default function App() {
   const [mapMode, setMapMode] = useState<'view' | 'edit'>('view')
   const [mapTool, setMapTool] = useState<MapToolState>({ tool: 'brush', eraserSize: 1, fillRandom: false })
   const [hoverMapTile, setHoverMapTile] = useState<{ tx: number; ty: number; tileIdx: number } | null>(null)
+  const [mapBgSlot, setMapBgSlot] = useState(0)
   const [, setMapHistory] = useState<Uint8Array[]>([])
+  tabRef.current = tab
   const [showHelp, setShowHelp] = useState(false)
+  const [hoveredProjectSlot, setHoveredProjectSlot] = useState<number | null>(null)
 
   function handleLoad(loaded: Cart, name: string) {
     setCart(loaded)
@@ -64,16 +62,12 @@ export default function App() {
     setTab('spritesheet')
     const savedProjectPalette = loaded.paletteToolData?.projectPalette ?? DEFAULT_PROJECT_PALETTE
     setProjectPalette(savedProjectPalette)
-    setDrawPalette(migrateSlotPalette(loaded.paletteToolData?.drawPalette ?? IDENTITY_PALETTE, savedProjectPalette))
     setLabelPalette(loaded.paletteToolData?.labelPalette ?? {})
-    setNamedPalettes(
-      (loaded.paletteToolData?.namedPalettes ?? []).map(p => ({
-        ...p,
-        drawPalette: migrateSlotPalette(p.drawPalette, savedProjectPalette),
-        transparentColours: p.transparentColours ?? [],
-      }))
-    )
-    setTransparentColours(loaded.paletteToolData?.transparentColours ?? [])
+    const savedPalettes = loaded.paletteToolData?.namedPalettes
+    const palettes = savedPalettes && savedPalettes.length > 0 ? savedPalettes : [makeDefaultPalette()]
+    setNamedPalettes(palettes)
+    const savedActiveId = loaded.paletteToolData?.activePaletteId
+    setActivePaletteId(savedActiveId && palettes.find(p => p.id === savedActiveId) ? savedActiveId : palettes[0].id)
     setCartOpts({
       useSharedMap: loaded.paletteToolData?.useSharedMap ?? DEFAULT_OPTS.useSharedMap,
       showZeroTile: loaded.paletteToolData?.showZeroTile ?? DEFAULT_OPTS.showZeroTile,
@@ -100,7 +94,7 @@ export default function App() {
         setShowHelp(v => !v)
         return
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && tabRef.current === 'map') {
         e.preventDefault()
         setMapHistory(h => {
           if (h.length === 0) return h
@@ -113,21 +107,15 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  function applyNamedPalette(i: number) {
-    setDrawPalette([...namedPalettes[i].drawPalette])
-    setTransparentColours([...namedPalettes[i].transparentColours])
-  }
-
   function handleExport() {
     if (!cart) return
     const toolData: PaletteToolData = {
       projectPalette,
-      drawPalette,
+      namedPalettes,
+      activePaletteId,
       labelPalette,
       useSharedMap: cartOpts.useSharedMap,
       showZeroTile: cartOpts.showZeroTile,
-      namedPalettes,
-      transparentColours,
       mapWidth,
       animations,
     }
@@ -142,24 +130,7 @@ export default function App() {
     URL.revokeObjectURL(url)
   }
 
-  const resolvedPalette = useMemo(
-    () => drawPalette.map(slot => projectPalette[slot]),
-    [drawPalette, projectPalette]
-  )
-
   const tabs = ['spritesheet', 'map', ...(cart?.label ? ['label'] : []), 'animation', 'options'] as Tab[]
-
-  const paletteEditorProps = {
-    drawPalette,
-    onChange: setDrawPalette,
-    projectPalette,
-    namedPalettes,
-    onSavePalette: (name: string) => setNamedPalettes(prev => [...prev, { name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }]),
-    onDeletePalette: (i: number) => setNamedPalettes(prev => prev.filter((_, j) => j !== i)),
-    onApplyPalette: applyNamedPalette,
-    transparentColours,
-    onTransparencyChange: setTransparentColours,
-  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -244,13 +215,14 @@ export default function App() {
         ) : (
           <>
             {tab === 'spritesheet' && (
-              <div className="flex gap-6 items-start">
+              <div className="flex gap-6 items-start max-w-5xl">
                 <SpritesheetView
                   gfx={cart.gfx}
                   drawPalette={projectPalette}
                   pixelRows={cartOpts.useSharedMap ? 64 : 128}
+                  highlightSlot={hoveredProjectSlot}
                 />
-                <ProjectPaletteEditor projectPalette={projectPalette} onChange={setProjectPalette} />
+                <ProjectPaletteEditor projectPalette={projectPalette} onChange={setProjectPalette} onHoverSlot={setHoveredProjectSlot} />
               </div>
             )}
             {tab === 'map' && (
@@ -258,7 +230,7 @@ export default function App() {
                 <MapView
                   gfx={cart.gfx}
                   map={mapData ?? cart.map}
-                  drawPalette={resolvedPalette}
+                  drawPalette={projectPalette}
                   tileRows={cartOpts.useSharedMap ? 64 : 32}
                   showZeroTile={cartOpts.showZeroTile}
                   mapWidth={mapWidth}
@@ -272,17 +244,37 @@ export default function App() {
                   onStrokeStart={handleStrokeStart}
                   onMapChange={setMapData}
                   onHoverTile={setHoverMapTile}
+                  bgColourSlot={mapBgSlot}
                 />
                 <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-[12px] text-[var(--p8-white)]">bg colour</h2>
+                    <div className="flex flex-wrap" style={{ width: 8 * 20 }}>
+                      {projectPalette.map((colourIdx, slot) => {
+                        const hex = colourIdx >= 128 ? SECRET_PALETTE[colourIdx - 128] : STANDARD_PALETTE[colourIdx]
+                        return (
+                          <button
+                            key={slot}
+                            onClick={() => setMapBgSlot(slot)}
+                            className="w-5 h-5"
+                            style={{
+                              background: hex,
+                              outline: slot === mapBgSlot ? '2px solid var(--p8-yellow)' : '2px solid transparent',
+                              outlineOffset: '-2px',
+                            }}
+                          />
+                        )
+                      })}
+                    </div>
+                  </div>
                   {mapMode === 'edit' && (
                     <TilePicker
                       gfx={cart.gfx}
-                      drawPalette={resolvedPalette}
+                      drawPalette={projectPalette}
                       brush={tileBrush}
                       onBrushChange={setTileBrush}
                     />
                   )}
-                  <PaletteEditor {...paletteEditorProps} />
                   {mapWidth !== 128 && (
                     <div className="flex flex-col gap-2">
                       <span className="text-[var(--p8-light-grey)]">map width</span>
@@ -297,24 +289,16 @@ export default function App() {
                 key={filename}
                 gfx={cart.gfx}
                 projectPalette={projectPalette}
-                drawPalette={drawPalette}
-                onDrawPaletteChange={setDrawPalette}
-                transparentColours={transparentColours}
-                onTransparencyChange={setTransparentColours}
-                namedPalettes={namedPalettes}
-                onSaveNamedPalette={name => setNamedPalettes(prev => [...prev, { name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }])}
-                onDeleteNamedPalette={i => setNamedPalettes(prev => prev.filter((_, j) => j !== i))}
-                onDuplicateNamedPalette={i => setNamedPalettes(prev => {
-                  const copy = { ...prev[i], name: prev[i].name + ' copy', drawPalette: [...prev[i].drawPalette], transparentColours: [...prev[i].transparentColours] }
-                  return [...prev.slice(0, i + 1), copy, ...prev.slice(i + 1)]
-                })}
-                onApplyNamedPalette={applyNamedPalette}
+                palettes={namedPalettes}
+                activePaletteId={activePaletteId}
+                onPalettesChange={setNamedPalettes}
+                onActivePaletteIdChange={setActivePaletteId}
                 animations={animations}
                 onAnimationsChange={setAnimations}
               />
             )}
             {tab === 'label' && cart.label && (
-              <div className="flex gap-6 items-start">
+              <div className="flex gap-6 items-start max-w-5xl">
                 <LabelView label={cart.label} labelPalette={labelPalette} />
                 <LabelPaletteEditor
                   label={cart.label}
@@ -387,13 +371,13 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
       onDragOver={e => { e.preventDefault(); setDragging(true) }}
       onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}
-      className={`flex flex-col items-center justify-center border-2 border-dashed p-16 transition-colors ${
+      className={`flex flex-col items-center justify-center border-2 border-dashed p-16 min-h-full transition-colors ${
         dragging
           ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
           : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)]'
       }`}
     >
-      <p className="mb-4">drop a .p8 or .p8.png file here</p>
+      <p className="mb-4">drop a .p8 file here</p>
       <button
         onClick={() => inputRef.current?.click()}
         className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] mb-6"
@@ -406,19 +390,23 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
             <button
               onClick={() => loadSample(s.file)}
               disabled={loadingFile !== null}
-              className="text-[var(--p8-blue)] hover:text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
+              className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] disabled:text-[var(--p8-lavender)]"
             >
               {loadingFile === s.file ? 'loading...' : s.label}
             </button>
-            <span className="text-[var(--p8-dark-grey)]">by {s.author}</span>
+            <span className="text-[var(--p8-lavender)]">by {s.author}</span>
             {s.url && (
               <a
                 href={s.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-white)]"
+                className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]"
                 title="View source"
-              >↗</a>
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                  <path d="M3 1h6v6M9 1L1 9" />
+                </svg>
+              </a>
             )}
           </div>
         ))}
@@ -426,7 +414,7 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
           href={SUGGEST_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-white)] mt-2"
+          className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] mt-2"
         >
           + suggest a sample cart
         </a>
@@ -434,7 +422,7 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
       <input
         ref={inputRef}
         type="file"
-        accept=".p8,.png"
+        accept=".p8"
         className="hidden"
         onChange={handleFileInput}
       />
@@ -443,10 +431,6 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
 }
 
 function readFile(file: File, onLoad: (cart: Cart, filename: string) => void) {
-  if (file.name.endsWith('.p8.png')) {
-    decodePngCart(file).then(cart => onLoad(cart, file.name))
-    return
-  }
   const reader = new FileReader()
   reader.onload = e => {
     const text = e.target?.result

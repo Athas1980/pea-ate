@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { STANDARD_PALETTE, SECRET_PALETTE } from '../types/cart'
 
 interface Props {
@@ -6,12 +6,25 @@ interface Props {
   drawPalette: number[]
   /** 64 = top half only (bottom half is shared map memory); 128 = full sheet */
   pixelRows: 64 | 128
+  highlightSlot?: number | null
 }
 
-export default function SpritesheetView({ gfx, drawPalette, pixelRows }: Props) {
+export default function SpritesheetView({ gfx, drawPalette, pixelRows, highlightSlot }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const canvasHeight = pixelRows
   const displayHeight = pixelRows === 128 ? 512 : 256
+  const [blinkOn, setBlinkOn] = useState(false)
+
+  useEffect(() => {
+    if (highlightSlot == null) { setBlinkOn(false); return }
+    let id: ReturnType<typeof setTimeout>
+    function schedule(on: boolean) {
+      id = setTimeout(() => { setBlinkOn(on); schedule(!on) }, on ? 650 : 150)
+    }
+    setBlinkOn(true)
+    schedule(false)
+    return () => clearTimeout(id)
+  }, [highlightSlot == null]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -23,16 +36,19 @@ export default function SpritesheetView({ gfx, drawPalette, pixelRows }: Props) 
     const rgb = resolveRgb(drawPalette)
 
     for (let i = 0; i < 128 * canvasHeight; i++) {
-      const [r, g, b] = rgb[gfx[i] & 0xf]
+      const slot = gfx[i] & 0xf
+      const [r, g, b] = rgb[slot]
       const out = i * 4
-      imageData.data[out]     = r
-      imageData.data[out + 1] = g
-      imageData.data[out + 2] = b
+      if (highlightSlot != null && blinkOn && slot === highlightSlot) {
+        imageData.data[out] = 255 - r; imageData.data[out+1] = 255 - g; imageData.data[out+2] = 255 - b
+      } else {
+        imageData.data[out] = r; imageData.data[out+1] = g; imageData.data[out+2] = b
+      }
       imageData.data[out + 3] = 255
     }
 
     ctx.putImageData(imageData, 0, 0)
-  }, [gfx, drawPalette, canvasHeight])
+  }, [gfx, drawPalette, canvasHeight, highlightSlot, blinkOn])
 
   return (
     <canvas

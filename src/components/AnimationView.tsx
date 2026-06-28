@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { STANDARD_PALETTE, SECRET_PALETTE } from '../types/cart'
-import type { Animation, AnimationFrame, TileBrush } from '../types/cart'
+import type { Animation, AnimationFrame, NamedPalette, TileBrush } from '../types/cart'
 import TilePicker from './TilePicker'
 import CodeSnippet from './CodeSnippet'
 
@@ -10,25 +10,18 @@ const TILE = 8
 const IDENTITY = Array.from({ length: 16 }, (_, i) => i)
 type Rgb = [number, number, number]
 
-interface NamedPalette { name: string; drawPalette: number[]; transparentColours: number[] }
-
 interface Props {
   gfx: Uint8Array
   projectPalette: number[]
-  drawPalette: number[]
-  onDrawPaletteChange: (p: number[]) => void
-  transparentColours: number[]
-  onTransparencyChange: (t: number[]) => void
-  namedPalettes: NamedPalette[]
-  onSaveNamedPalette: (name: string) => void
-  onDeleteNamedPalette: (index: number) => void
-  onDuplicateNamedPalette: (index: number) => void
-  onApplyNamedPalette: (index: number) => void
+  palettes: NamedPalette[]
+  activePaletteId: number
+  onPalettesChange: (palettes: NamedPalette[]) => void
+  onActivePaletteIdChange: (id: number) => void
   animations: Animation[]
   onAnimationsChange: (a: Animation[]) => void
 }
 
-export default function AnimationView({ gfx, projectPalette, drawPalette, onDrawPaletteChange, transparentColours, onTransparencyChange, namedPalettes, onSaveNamedPalette, onDeleteNamedPalette, onDuplicateNamedPalette, onApplyNamedPalette, animations, onAnimationsChange }: Props) {
+export default function AnimationView({ gfx, projectPalette, palettes, activePaletteId, onPalettesChange, onActivePaletteIdChange, animations, onAnimationsChange }: Props) {
   const [activeAnimIdx, setActiveAnimIdx] = useState<number | null>(animations.length > 0 ? 0 : null)
   const [activeFrameIdx, setActiveFrameIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -43,27 +36,44 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'single' | 'strip'>('single')
   const [zoom, setZoom] = useState(4)
+  const [showGrid, setShowGrid] = useState(false)
+  const [hoveredSlot, setHoveredSlot] = useState<number | null>(null)
+  const [blinkOn, setBlinkOn] = useState(false)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const paintingRef = useRef(false)
   const rafRef = useRef<number | null>(null)
   const animRef = useRef<Animation | null>(null)
+  const historyRef = useRef<Animation[][]>([])
+  const animationsRef = useRef(animations)
+  animationsRef.current = animations
 
   const anim = activeAnimIdx !== null ? (animations[activeAnimIdx] ?? null) : null
   const safeFrameIdx = anim ? Math.min(activeFrameIdx, anim.frames.length - 1) : 0
   const frame = anim ? anim.frames[safeFrameIdx] ?? null : null
   animRef.current = anim
 
+  const activePalette = palettes.find(p => p.id === activePaletteId) ?? palettes[0]
+  const drawPalette = activePalette.drawPalette
+  const transparentColours = activePalette.transparentColours
+
   const resolvedPalette = useMemo(() => {
-    const base = (frame?.palette !== undefined && namedPalettes[frame.palette])
-      ? namedPalettes[frame.palette].drawPalette
-      : IDENTITY
+    const pal = frame?.paletteId !== undefined ? palettes.find(p => p.id === frame.paletteId) : null
+    const base = pal ? pal.drawPalette : IDENTITY
     return base.map(slot => projectPalette[slot])
-  }, [frame?.palette, projectPalette, namedPalettes])
+  }, [frame?.paletteId, projectPalette, palettes])
+
+  const resolvedTransparent = useMemo(() => {
+    if (frame?.paletteId !== undefined) {
+      const pal = palettes.find(p => p.id === frame.paletteId)
+      if (pal) return pal.transparentColours
+    }
+    return []
+  }, [frame?.paletteId, palettes])
 
   const animSnippet = useMemo(() =>
-    anim ? generateAnimSnippet(anim, namedPalettes, projectPalette) : null,
-    [anim, namedPalettes, projectPalette]
+    anim ? generateAnimSnippet(anim, palettes, projectPalette) : null,
+    [anim, palettes, projectPalette]
   )
   const [snippetCopied, setSnippetCopied] = useState(false)
   function handleSnippetCopy() {
@@ -78,8 +88,8 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     const canvas = canvasRef.current
     if (!canvas || !anim || !frame) return
     const ctx = canvas.getContext('2d')!
-    renderFrame(ctx, frame, anim.w, anim.h, gfx, resolvedPalette, anim.mirror ?? false)
-  }, [frame, anim, gfx, resolvedPalette, viewMode])
+    renderFrame(ctx, frame, anim.w, anim.h, gfx, resolvedPalette, anim.mirror ?? false, resolvedTransparent, hoveredSlot, blinkOn)
+  }, [frame, anim, gfx, resolvedPalette, resolvedTransparent, viewMode, hoveredSlot, blinkOn])
 
   // Playback loop
   useEffect(() => {
@@ -118,6 +128,33 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     if (a) { setEditName(a.name); setEditWStr(String(a.w)); setEditHStr(String(a.h)) }
   }, [activeAnimIdx])
 
+  // Highlight blink
+  useEffect(() => {
+    if (hoveredSlot == null) { setBlinkOn(false); return }
+    let id: ReturnType<typeof setTimeout>
+    function schedule(on: boolean) {
+      id = setTimeout(() => { setBlinkOn(on); schedule(!on) }, on ? 650 : 150)
+    }
+    setBlinkOn(true)
+    schedule(false)
+    return () => clearTimeout(id)
+  }, [hoveredSlot == null]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Undo
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        const h = historyRef.current
+        if (h.length === 0) return
+        e.preventDefault()
+        onAnimationsChange(h[h.length - 1])
+        historyRef.current = h.slice(0, -1)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onAnimationsChange])
+
   // Painting
   function getTilePos(e: React.MouseEvent<HTMLCanvasElement>) {
     if (!anim) return null
@@ -130,13 +167,11 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
 
   function paintAt(tx: number, ty: number) {
     if (activeAnimIdx === null || !anim || !frame) return
-    const snappedTx = Math.floor(tx / brush.w) * brush.w
-    const snappedTy = Math.floor(ty / brush.h) * brush.h
     const newTiles = [...frame.tiles]
     for (let dy = 0; dy < brush.h; dy++) {
       for (let dx = 0; dx < brush.w; dx++) {
-        const destX = snappedTx + dx
-        const destY = snappedTy + dy
+        const destX = tx + dx
+        const destY = ty + dy
         if (destX < anim.w && destY < anim.h) {
           newTiles[destY * anim.w + destX] = (brush.tileY + dy) * 16 + (brush.tileX + dx)
         }
@@ -148,6 +183,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
   function handleCanvasMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
     if (playing) return
     e.preventDefault()
+    historyRef.current = [...historyRef.current.slice(-49), animationsRef.current]
     paintingRef.current = true
     const pos = getTilePos(e)
     if (pos) paintAt(pos.tx, pos.ty)
@@ -175,7 +211,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     const prev = anim.frames[anim.frames.length - 1]
     const newFrame: AnimationFrame = {
       tiles: prev ? [...prev.tiles] : Array(anim.w * anim.h).fill(0),
-      palette: prev?.palette,
+      paletteId: prev?.paletteId,
       flip: prev?.flip,
     }
     onAnimationsChange(animations.map((a, i) =>
@@ -208,9 +244,13 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
 
   function createAnimation() {
     const name = `anim ${animations.length + 1}`
+    const tiles: number[] = []
+    for (let dy = 0; dy < brush.h; dy++)
+      for (let dx = 0; dx < brush.w; dx++)
+        tiles.push((brush.tileY + dy) * 16 + (brush.tileX + dx))
     const newAnim: Animation = {
-      name, mode: 'grid', speed: 12, w: 1, h: 1,
-      frames: [{ tiles: [0] }],
+      name, mode: 'grid', speed: 12, w: brush.w, h: brush.h,
+      frames: [{ tiles }],
     }
     const next = [...animations, newAnim]
     onAnimationsChange(next)
@@ -253,9 +293,12 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
     setPlaying(false)
   }
 
-  function handleSavePalette() {
-    const name = savePaletteName.trim() || `palette ${namedPalettes.length + 1}`
-    onSaveNamedPalette(name)
+  function handleAddPalette() {
+    const name = savePaletteName.trim() || `palette ${palettes.length + 1}`
+    const id = Math.max(0, ...palettes.map(p => p.id)) + 1
+    const newPalette: NamedPalette = { id, name, drawPalette: [...drawPalette], transparentColours: [...transparentColours] }
+    onPalettesChange([...palettes, newPalette])
+    onActivePaletteIdChange(id)
     setSavePaletteName('')
     setSavingPalette(false)
   }
@@ -276,9 +319,8 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
 
       for (let fi = 0; fi < anim.frames.length; fi++) {
         const f = anim.frames[fi]
-        const base = (f.palette !== undefined && namedPalettes[f.palette])
-          ? namedPalettes[f.palette].drawPalette
-          : IDENTITY
+        const pal = f.paletteId !== undefined ? palettes.find(p => p.id === f.paletteId) : null
+        const base = pal ? pal.drawPalette : IDENTITY
 
         // GIF palette: index p → colour that slot p draws as in this frame
         const gifPalette: [number, number, number][] = Array.from({ length: 16 }, (_, p) => {
@@ -365,212 +407,268 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
   const sizeChanged = anim !== null && parsedW > 0 && parsedH > 0 && (parsedW !== anim.w || parsedH !== anim.h)
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 max-w-5xl">
 
       {/* Palette editor */}
       <div className="flex flex-col gap-2 border-b-2 border-[var(--p8-dark-grey)] pb-4">
-        <span className="text-[var(--p8-light-grey)]">draw palette</span>
+        <h2 className="text-[12px] text-[var(--p8-white)]">Draw Palette</h2>
 
-        {/* Source slot grid */}
-        {/* FIXME use common editor*/}
-        <div className="grid grid-cols-16 gap-px w-fit">
-          {drawPalette.map((targetSlot, slot) => {
-            const remapped = targetSlot !== slot
-            const selected = selectedSlot === slot
-            return (
-              <button
-                key={slot}
-                title={`slot ${slot} → slot ${targetSlot}`}
-                onClick={() => setSelectedSlot(prev => prev === slot ? null : slot)}
-                onContextMenu={e => {
-                  e.preventDefault()
-                  if (remapped) {
-                    const next = [...drawPalette]; next[slot] = slot; onDrawPaletteChange(next)
-                    if (selectedSlot === slot) setSelectedSlot(null)
-                  }
-                }}
-                className="relative flex flex-col items-center gap-0.5 p-0"
-              >
-                <div className="relative w-6 h-6" style={{
-                  background: resolveHex(projectPalette[targetSlot]),
-                  outline: selected ? '2px solid var(--p8-yellow)' : remapped ? '2px solid var(--p8-white)' : '2px solid transparent',
-                  outlineOffset: '1px',
-                }}>
-                  {transparentColours.includes(slot) && (
-                    <div className="absolute inset-0" style={{
-                      backgroundImage: 'linear-gradient(45deg, #fff2 25%, transparent 25%, transparent 75%, #fff2 75%), linear-gradient(45deg, #fff2 25%, transparent 25%, transparent 75%, #fff2 75%)',
-                      backgroundSize: '6px 6px',
-                      backgroundPosition: '0 0, 3px 3px',
-                    }} />
-                  )}
-                </div>
-                {remapped && <div className="w-1.5 h-1.5 rounded-full bg-[var(--p8-yellow)]" />}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Colour picker */}
-        {selectedSlot !== null && (
-          <div className="flex flex-col gap-1 border-2 border-[var(--p8-dark-grey)] p-2 w-fit">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-[var(--p8-light-grey)]">slot {selectedSlot} → {drawPalette[selectedSlot]}</span>
-              <button
-                onClick={() => {
-                  if (transparentColours.includes(selectedSlot)) {
-                    onTransparencyChange(transparentColours.filter(s => s !== selectedSlot))
-                  } else {
-                    onTransparencyChange([...transparentColours, selectedSlot])
-                  }
-                }}
-                className={transparentColours.includes(selectedSlot) ? 'text-[var(--p8-yellow)]' : 'text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'}
-              >
-                {transparentColours.includes(selectedSlot) ? 'transparent' : 'opaque'}
-              </button>
-            </div>
+        {/* Unified palette box: draw palette + slot picker share one border */}
+        <div className="border-2 border-[var(--p8-dark-grey)] w-fit">
+          {/* Source slot grid */}
+          {/* FIXME use common editor*/}
+          <div className="p-2 flex flex-col gap-1">
+            <span className="text-[var(--p8-light-grey)]">Source</span>
             <div className="grid grid-cols-16 gap-px">
-              {projectPalette.map((colourIdx, slotIdx) => (
-                <button
-                  key={slotIdx}
-                  title={`slot ${slotIdx}`}
-                  className="w-6 h-6"
-                  style={{
-                    background: resolveHex(colourIdx),
-                    outline: drawPalette[selectedSlot] === slotIdx ? '2px solid var(--p8-yellow)' : '2px solid transparent',
-                    outlineOffset: '1px',
-                  }}
-                  onClick={() => { const next = [...drawPalette]; next[selectedSlot] = slotIdx; onDrawPaletteChange(next) }}
-                />
-              ))}
+              {drawPalette.map((targetSlot, slot) => {
+                const remapped = targetSlot !== slot
+                const selected = selectedSlot === slot
+                return (
+                  <button
+                    key={slot}
+                    title={`slot ${slot} → slot ${targetSlot}`}
+                    onClick={() => setSelectedSlot(prev => prev === slot ? null : slot)}
+                    onContextMenu={e => {
+                      e.preventDefault()
+                      if (remapped) {
+                        const next = [...drawPalette]; next[slot] = slot
+                        onPalettesChange(palettes.map(p => p.id === activePaletteId ? { ...p, drawPalette: next } : p))
+                        if (selectedSlot === slot) setSelectedSlot(null)
+                      }
+                    }}
+                    onMouseEnter={() => setHoveredSlot(slot)}
+                    onMouseLeave={() => setHoveredSlot(null)}
+                    className="relative flex flex-col items-center gap-0.5 p-0"
+                  >
+                    <div className="relative w-6 h-6" style={{
+                      background: resolveHex(projectPalette[targetSlot]),
+                      outline: selected ? '2px solid var(--p8-yellow)' : remapped ? '2px solid var(--p8-white)' : '2px solid transparent',
+                      outlineOffset: '1px',
+                    }}>
+                      {transparentColours.includes(slot) && (
+                        <div className="absolute inset-0" style={{
+                          backgroundImage: 'linear-gradient(45deg, rgba(0,0,0,0.3) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.3) 75%), linear-gradient(45deg, rgba(0,0,0,0.3) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.3) 75%)',
+                        backgroundColor: 'rgba(255,255,255,0.2)',
+                          backgroundSize: '6px 6px',
+                          backgroundPosition: '0 0, 3px 3px',
+                        }} />
+                      )}
+                    </div>
+                    {remapped && <div className="w-1.5 h-1.5 rounded-full bg-[var(--p8-yellow)]" />}
+                  </button>
+                )
+              })}
             </div>
           </div>
-        )}
+
+          {/* Colour picker — shares outer border via border-t */}
+          {selectedSlot !== null && (
+            <div className="border-t-2 border-[var(--p8-dark-grey)] p-2 flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[var(--p8-light-grey)]">slot {selectedSlot} → {drawPalette[selectedSlot]}</span>
+                <div className="flex">
+                  <button
+                    onClick={() => onPalettesChange(palettes.map(p => p.id === activePaletteId ? { ...p, transparentColours: transparentColours.filter(s => s !== selectedSlot) } : p))}
+                    className={`px-2 py-0.5 border-2 ${!transparentColours.includes(selectedSlot) ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]' : 'border-[var(--p8-dark-grey)] border-r-[var(--p8-yellow)] text-[var(--p8-light-grey)]'}`}
+                  >opaque</button>
+                  <button
+                    onClick={() => onPalettesChange(palettes.map(p => p.id === activePaletteId ? { ...p, transparentColours: [...transparentColours, selectedSlot] } : p))}
+                    className={`px-2 py-0.5 border-2 border-l-0 ${transparentColours.includes(selectedSlot) ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]' : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)]'}`}
+                  >transparent</button>
+                </div>
+              </div>
+              <div className="grid grid-cols-16 gap-px">
+                {projectPalette.map((colourIdx, slotIdx) => (
+                  <button
+                    key={slotIdx}
+                    title={`slot ${slotIdx}`}
+                    className="w-6 h-6"
+                    style={{
+                      background: resolveHex(colourIdx),
+                      outline: drawPalette[selectedSlot] === slotIdx ? '2px solid var(--p8-yellow)' : '2px solid transparent',
+                      outlineOffset: '1px',
+                    }}
+                    onClick={() => {
+                      const next = [...drawPalette]; next[selectedSlot] = slotIdx
+                      onPalettesChange(palettes.map(p => p.id === activePaletteId ? { ...p, drawPalette: next } : p))
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {drawPalette.some((v, i) => v !== i) && (
           <button
-            onClick={() => { onDrawPaletteChange(Array.from({ length: 16 }, (_, i) => i)); setSelectedSlot(null) }}
-            className="self-start text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]"
+            onClick={() => {
+              onPalettesChange(palettes.map(p => p.id === activePaletteId ? { ...p, drawPalette: [...IDENTITY] } : p))
+              setSelectedSlot(null)
+            }}
+            className="self-start text-[var(--p8-light-grey)] hover:text-[var(--p8-red)]"
           >reset all</button>
         )}
 
         {/* Named palettes list */}
-        {namedPalettes.length > 0 && (
-          <div className="flex flex-col gap-1.5 mt-1">
-            <span className="text-[var(--p8-light-grey)]">named palettes</span>
-            {namedPalettes.map((pal, i) => (
-              <div key={i} className="flex items-center gap-1.5">
+        <div className="flex flex-col gap-1.5 mt-1">
+          <h2 className="text-[12px] text-[var(--p8-white)]">Named Palettes</h2>
+          {palettes.map(pal => (
+            <div key={pal.id} className="flex items-center gap-1.5">
+              <button
+                onClick={() => onActivePaletteIdChange(pal.id)}
+                className="flex items-center gap-1 text-left hover:opacity-80 w-96 min-w-0"
+                style={{ outline: pal.id === activePaletteId ? '2px solid var(--p8-yellow)' : undefined, outlineOffset: 2 }}
+                title={`Edit "${pal.name}"`}
+              >
+                <div className="flex gap-px shrink-0">
+                  {pal.drawPalette.map((slot, s) => (
+                    <div key={s} className="w-2 h-4" style={{ background: resolveHex(projectPalette[slot]) }} />
+                  ))}
+                </div>
+                <span className="text-[var(--p8-light-grey)] ml-1 truncate">{pal.name}</span>
+              </button>
+              {anim && (
                 <button
-                  onClick={() => onApplyNamedPalette(i)}
-                  className="flex items-center gap-1 text-left hover:opacity-80"
-                  title={`Apply "${pal.name}" to draw palette`}
-                >
-                  <div className="flex gap-px">
-                    {pal.drawPalette.map((slot, s) => (
-                      <div key={s} className="w-2 h-4" style={{ background: resolveHex(projectPalette[slot]) }} />
-                    ))}
-                  </div>
-                  <span className="text-[var(--p8-light-grey)] ml-1">{pal.name}</span>
-                </button>
-                {anim && (
-                  <button
-                    onClick={() => updateFrame(activeAnimIdx!, safeFrameIdx, { palette: i })}
-                    className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-green)]"
-                    title={`Set on frame ${safeFrameIdx + 1}`}
-                  >use</button>
-                )}
-                <button onClick={() => onDuplicateNamedPalette(i)} className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]" title="Duplicate palette">⧉</button>
-                <button onClick={() => onDeleteNamedPalette(i)} className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-red)]">×</button>
-              </div>
-            ))}
-          </div>
-        )}
+                  onClick={() => updateFrame(activeAnimIdx!, safeFrameIdx, { paletteId: pal.id })}
+                  className="px-2 py-0.5 border-2 border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-green)] hover:text-[var(--p8-green)]"
+                  title={`Set on frame ${safeFrameIdx + 1}`}
+                >use</button>
+              )}
+              <button
+                onClick={() => {
+                  const id = Math.max(0, ...palettes.map(p => p.id)) + 1
+                  const copy: NamedPalette = { id, name: pal.name + ' copy', drawPalette: [...pal.drawPalette], transparentColours: [...pal.transparentColours] }
+                  onPalettesChange([...palettes, copy])
+                  onActivePaletteIdChange(id)
+                }}
+                className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]" title="Duplicate palette"
+              >⧉</button>
+              {palettes.length > 1 && (
+                <button
+                  onClick={() => {
+                    const next = palettes.filter(p => p.id !== pal.id)
+                    onPalettesChange(next)
+                    if (pal.id === activePaletteId) onActivePaletteIdChange(next[0].id)
+                  }}
+                  className="text-[var(--p8-light-grey)] hover:text-[var(--p8-red)]"
+                >×</button>
+              )}
+            </div>
+          ))}
+        </div>
 
-        {/* Save current */}
+        {/* Clone as new */}
         {savingPalette ? (
           <div className="flex gap-2 items-center">
             <input
               type="text"
               value={savePaletteName}
               onChange={e => setSavePaletteName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSavePalette(); if (e.key === 'Escape') setSavingPalette(false) }}
-              placeholder={`palette ${namedPalettes.length + 1}`}
+              onKeyDown={e => { if (e.key === 'Enter') handleAddPalette(); if (e.key === 'Escape') setSavingPalette(false) }}
+              placeholder={`palette ${palettes.length + 1}`}
               autoFocus
               className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-28 outline-none focus:border-[var(--p8-yellow)]"
             />
-            <button onClick={handleSavePalette} className="text-[var(--p8-green)]">save</button>
-            <button onClick={() => setSavingPalette(false)} className="text-[var(--p8-dark-grey)]">cancel</button>
+            <button onClick={handleAddPalette} className="text-[var(--p8-green)]">save</button>
+            <button onClick={() => setSavingPalette(false)} className="text-[var(--p8-light-grey)]">cancel</button>
           </div>
         ) : (
           <button onClick={() => setSavingPalette(true)}
             className="self-start text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]"
-          >+ save current</button>
+          >+ clone as new</button>
         )}
       </div>
 
-      {/* Animation selector — only when animations exist */}
-      {animations.length > 0 && (
-        <div className="flex gap-2 items-center flex-wrap">
-          {animations.map((a, i) => (
-            <button key={i}
-              onClick={() => { setActiveAnimIdx(i); setPlaying(false) }}
-              className={`px-2 py-0.5 ${activeAnimIdx === i
-                ? 'text-[var(--p8-white)] bg-[rgba(255,255,255,0.1)]'
-                : 'text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'
-              }`}
-            >{a.name}</button>
-          ))}
-          <button onClick={createAnimation} className="px-2 py-0.5 border-2 border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]">
+      {/* Main layout — animations sidebar + tile picker always visible */}
+      <div className="flex gap-6 items-start">
+        {/* Animations sidebar */}
+        <div className="flex flex-col gap-2 w-fit" style={{ maxWidth: '9rem' }}>
+          <h2 className="text-[12px] text-[var(--p8-white)]">Animations</h2>
+          <div className="flex flex-col gap-1 overflow-y-auto max-h-64">
+            {animations.map((a, i) => (
+              <button
+                key={i}
+                onClick={() => { setActiveAnimIdx(i); setPlaying(false) }}
+                className={`px-2 py-1 text-left truncate w-full leading-none shrink-0 ${activeAnimIdx === i
+                  ? 'text-[var(--p8-white)] bg-[rgba(255,255,255,0.1)]'
+                  : 'text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]'
+                }`}
+              >{a.name}</button>
+            ))}
+          </div>
+          <button onClick={createAnimation} className="px-2 py-0.5 border-2 border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-white)] hover:text-[var(--p8-white)] self-start">
             + new
           </button>
         </div>
-      )}
-
-      {/* Main layout — tile picker always visible */}
-      <div className="flex gap-6 items-start">
         {/* Preview canvas — only when animation active */}
         {anim && frame && (
           <div className="flex flex-col gap-2 min-w-32">
-            <span className="text-[var(--p8-light-grey)]">{frameLabel}</span>
+            <h2 className="text-[12px] text-[var(--p8-white)]">Canvas</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setZoom(z => Math.max(MIN_ZOOM, z - 1))}
                 disabled={zoom === MIN_ZOOM}
-                className="w-6 h-6 text-center text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
+                className="w-6 h-6 text-center text-[var(--p8-white)] disabled:text-[var(--p8-lavender)]"
               >-</button>
               <span className="text-[var(--p8-light-grey)] w-6 text-center">{zoom}×</span>
               <button
                 onClick={() => setZoom(z => Math.min(MAX_ZOOM, z + 1))}
                 disabled={zoom === MAX_ZOOM}
-                className="w-6 h-6 text-center text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
+                className="w-6 h-6 text-center text-[var(--p8-white)] disabled:text-[var(--p8-lavender)]"
               >+</button>
               {anim.frames.length > 1 && (
                 <button
                   onClick={() => setViewMode(v => v === 'single' ? 'strip' : 'single')}
                   className={`px-2 py-0.5 border-2 ${viewMode === 'strip'
                     ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
-                    : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+                    : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-white)] hover:text-[var(--p8-white)]'
                   }`}
                 >strip</button>
               )}
+              <button
+                onClick={() => setShowGrid(g => !g)}
+                className={`px-2 py-0.5 border-2 ${showGrid
+                  ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
+                  : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-white)] hover:text-[var(--p8-white)]'
+                }`}
+              >grid</button>
             </div>
             {viewMode === 'single' ? (
-              <canvas
-                ref={canvasRef}
-                width={anim.mirror ? canvasW * 2 : canvasW} height={canvasH}
-                onMouseDown={handleCanvasMouseDown}
-                onMouseMove={handleCanvasMouseMove}
-                onMouseUp={handleCanvasMouseUp}
-                onMouseLeave={handleCanvasMouseUp}
-                className={`border-2 border-[var(--p8-dark-grey)] ${playing ? 'cursor-default' : 'cursor-crosshair'}`}
-                style={{ imageRendering: 'pixelated', width: (anim.mirror ? canvasW * 2 : canvasW) * zoom, height: canvasH * zoom }}
-              />
+              <div className="flex flex-col gap-1">
+                <div className="relative" style={{ width: (anim.mirror ? canvasW * 2 : canvasW) * zoom, height: canvasH * zoom }}>
+                  <canvas
+                    ref={canvasRef}
+                    width={anim.mirror ? canvasW * 2 : canvasW} height={canvasH}
+                    onMouseDown={handleCanvasMouseDown}
+                    onMouseMove={handleCanvasMouseMove}
+                    onMouseUp={handleCanvasMouseUp}
+                    onMouseLeave={handleCanvasMouseUp}
+                    className={`border-2 border-[var(--p8-dark-grey)] bg-black ${playing ? 'cursor-default' : 'cursor-crosshair'}`}
+                    style={{ imageRendering: 'pixelated', width: (anim.mirror ? canvasW * 2 : canvasW) * zoom, height: canvasH * zoom }}
+                  />
+                  {showGrid && (
+                    <svg
+                      className="absolute inset-0 pointer-events-none"
+                      width={(anim.mirror ? canvasW * 2 : canvasW) * zoom} height={canvasH * zoom}
+                    >
+                      {Array.from({ length: (anim.mirror ? anim.w * 2 : anim.w) - 1 }, (_, i) => (
+                        <line key={`v${i}`} x1={(i + 1) * TILE * zoom} y1={0} x2={(i + 1) * TILE * zoom} y2={canvasH * zoom} stroke="rgba(255,255,255,0.75)" strokeWidth={1} shapeRendering="crispEdges" />
+                      ))}
+                      {Array.from({ length: anim.h - 1 }, (_, i) => (
+                        <line key={`h${i}`} x1={0} y1={(i + 1) * TILE * zoom} x2={(anim.mirror ? canvasW * 2 : canvasW) * zoom} y2={(i + 1) * TILE * zoom} stroke="rgba(255,255,255,0.75)" strokeWidth={1} shapeRendering="crispEdges" />
+                      ))}
+                    </svg>
+                  )}
+                </div>
+                <span className="text-[var(--p8-lavender)]">{frameLabel}</span>
+              </div>
             ) : (
               <div className="flex flex-col gap-1">
                 {anim.frames.map((f, fi) => {
-                  const base = (f.palette !== undefined && namedPalettes[f.palette])
-                    ? namedPalettes[f.palette].drawPalette
-                    : IDENTITY
+                  const np = f.paletteId !== undefined ? palettes.find(p => p.id === f.paletteId) : null
+                  const base = np ? np.drawPalette : IDENTITY
                   const palette = base.map(slot => projectPalette[slot])
+                  const frameTransparent = np ? np.transparentColours : []
                   return (
                     <FilmstripFrame
                       key={fi}
@@ -578,6 +676,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                       w={anim.w} h={anim.h}
                       gfx={gfx}
                       resolvedPalette={palette}
+                      transparentColours={frameTransparent}
                       mirror={anim.mirror ?? false}
                       active={fi === safeFrameIdx}
                       zoom={zoom}
@@ -602,7 +701,8 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
         <div className="flex flex-col gap-2 w-52">
           {anim ? (
             <>
-              <div className="border-2 border-[var(--p8-dark-grey)] p-2 flex flex-col gap-2">
+              <h2 className="text-[12px] text-[var(--p8-white)]">Props</h2>
+              <div className="border-2 border-[var(--p8-dark-grey)] p-2 flex flex-col gap-2 bg-black">
                 <input
                   type="text"
                   value={editName}
@@ -612,19 +712,19 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                   className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-full outline-none focus:border-[var(--p8-yellow)]"
                 />
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[var(--p8-dark-grey)]">w</span>
+                  <span className="text-[var(--p8-light-grey)]">w</span>
                   <input type="number" min={1} max={8} value={editWStr}
                     onFocus={e => e.currentTarget.select()}
                     onChange={e => { setEditWStr(e.target.value); setConfirmingResize(false) }}
                     className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-8 outline-none focus:border-[var(--p8-yellow)]"
                   />
-                  <span className="text-[var(--p8-dark-grey)]">h</span>
+                  <span className="text-[var(--p8-light-grey)]">h</span>
                   <input type="number" min={1} max={8} value={editHStr}
                     onFocus={e => e.currentTarget.select()}
                     onChange={e => { setEditHStr(e.target.value); setConfirmingResize(false) }}
                     className="bg-transparent border-2 border-[var(--p8-dark-grey)] px-1 text-[var(--p8-white)] w-8 outline-none focus:border-[var(--p8-yellow)]"
                   />
-                  <span className="text-[var(--p8-dark-grey)]">tiles</span>
+                  <span className="text-[var(--p8-light-grey)]">tiles</span>
                 </div>
                 {sizeChanged && !confirmingResize && (
                   <button onClick={tryApplyResize} className="text-[var(--p8-green)] self-start">apply resize</button>
@@ -634,15 +734,15 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                     <span className="text-[var(--p8-red)]" style={{ fontSize: '10px' }}>tiles outside new boundary will be lost</span>
                     <div className="flex gap-3">
                       <button onClick={() => doApplyResize(parsedW, parsedH)} className="text-[var(--p8-red)]">apply</button>
-                      <button onClick={() => { setConfirmingResize(false); setEditWStr(String(anim.w)); setEditHStr(String(anim.h)) }} className="text-[var(--p8-dark-grey)]">cancel</button>
+                      <button onClick={() => { setConfirmingResize(false); setEditWStr(String(anim.w)); setEditHStr(String(anim.h)) }} className="text-[var(--p8-light-grey)]">cancel</button>
                     </div>
                   </div>
                 )}
-                <button onClick={deleteAnim} className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-red)] self-start mt-1">
+                <button onClick={deleteAnim} className="text-[var(--p8-light-grey)] hover:text-[var(--p8-red)] self-start mt-1">
                   delete
                 </button>
               </div>
-              <span className="text-[var(--p8-light-grey)]">frames</span>
+              <h2 className="text-[12px] text-[var(--p8-white)]">Frames</h2>
               <div className="flex flex-col gap-1 overflow-y-auto" style={{ maxHeight: 320 }}>
                 {anim.frames.map((f, fi) => (
                   <FrameCard
@@ -650,9 +750,9 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                     frameIdx={fi}
                     frame={f}
                     active={fi === safeFrameIdx}
-                    namedPalettes={namedPalettes}
+                    palettes={palettes}
                     onClick={() => { setActiveFrameIdx(fi); setPlaying(false) }}
-                    onPaletteChange={idx => updateFrame(activeAnimIdx!, fi, { palette: idx })}
+                    onPaletteChange={id => updateFrame(activeAnimIdx!, fi, { paletteId: id })}
                     onFlipToggle={() => updateFrame(activeAnimIdx!, fi, { flip: !f.flip })}
                     onDuplicate={() => duplicateFrame(fi)}
                     onDelete={() => deleteFrame(fi)}
@@ -664,11 +764,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
                 + add frame
               </button>
             </>
-          ) : (
-            <button onClick={createAnimation} className="px-2 py-0.5 border-2 border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]">
-              + new animation
-            </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -676,28 +772,44 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
       {anim && (
         <div className="flex items-center gap-6 border-t-2 border-[var(--p8-dark-grey)] pt-3">
           <button onClick={() => setPlaying(p => !p)}
-            className={`px-2 py-0.5 border-2 ${playing
+            className={`px-2 py-0.5 border-2 flex items-center gap-1.5 ${playing
               ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
               : 'border-[var(--p8-white)] text-[var(--p8-white)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
             }`}
-          >{playing ? 'stop' : 'play'}</button>
+          >
+            {playing ? (
+              <>
+                <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                  <rect width="10" height="10" fill="currentColor" />
+                </svg>
+                stop
+              </>
+            ) : (
+              <>
+                <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                  <polygon points="0,0 10,5 0,10" fill="var(--p8-green)" />
+                </svg>
+                play
+              </>
+            )}
+          </button>
           <div className="flex items-center gap-3">
-            <span className="text-[var(--p8-dark-grey)]">speed</span>
+            <span className="text-[var(--p8-light-grey)]">speed</span>
             <input type="range" min={1} max={30} value={anim.speed}
               onChange={e => updateAnim({ speed: parseInt(e.target.value) })}
               className="w-32"
             />
             <span className="text-[var(--p8-light-grey)]">{anim.speed} frames</span>
-            <span className="text-[var(--p8-dark-grey)]">({Math.round(60 / anim.speed)}fps)</span>
+            <span className="text-[var(--p8-lavender)]">({Math.round(60 / anim.speed)}fps)</span>
           </div>
           <button onClick={() => updateAnim({ mirror: !anim.mirror })}
             className={`px-2 py-0.5 border-2 ${anim.mirror
               ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
-              : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)] hover:text-[var(--p8-light-grey)]'
+              : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-white)] hover:text-[var(--p8-white)]'
             }`}
           >mirror</button>
           <button onClick={exportGif} disabled={exportingGif}
-            className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] disabled:text-[var(--p8-dark-grey)]"
+            className="px-2 py-0.5 border-2 border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-white)] hover:text-[var(--p8-white)] disabled:border-[var(--p8-dark-grey)] disabled:text-[var(--p8-lavender)]"
           >{exportingGif ? 'exporting…' : '↓ gif'}</button>
         </div>
       )}
@@ -705,7 +817,7 @@ export default function AnimationView({ gfx, projectPalette, drawPalette, onDraw
       {/* Lua export */}
       {anim && animSnippet && (
         <div className="flex flex-col gap-2 border-t-2 border-[var(--p8-dark-grey)] pt-3">
-          <span className="text-[var(--p8-light-grey)]">lua</span>
+          <h2 className="text-[12px] text-[var(--p8-white)]">Lua</h2>
           <CodeSnippet code={animSnippet} onCopy={handleSnippetCopy} copied={snippetCopied} />
         </div>
       )}
@@ -717,20 +829,20 @@ interface FrameCardProps {
   frameIdx: number
   frame: AnimationFrame
   active: boolean
-  namedPalettes: NamedPalette[]
+  palettes: NamedPalette[]
   onClick: () => void
-  onPaletteChange: (idx: number | undefined) => void
+  onPaletteChange: (id: number | undefined) => void
   onFlipToggle: () => void
   onDuplicate: () => void
   onDelete: () => void
   canDelete: boolean
 }
 
-function FrameCard({ frameIdx, frame, active, namedPalettes, onClick, onPaletteChange, onFlipToggle, onDuplicate, onDelete, canDelete }: FrameCardProps) {
+function FrameCard({ frameIdx, frame, active, palettes, onClick, onPaletteChange, onFlipToggle, onDuplicate, onDelete, canDelete }: FrameCardProps) {
   return (
     <div
       onClick={onClick}
-      className={`flex flex-col gap-1.5 p-1.5 border-2 cursor-pointer ${active
+      className={`flex flex-col gap-1.5 p-1.5 border-2 cursor-pointer bg-black ${active
         ? 'border-[var(--p8-yellow)]'
         : 'border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]'
       }`}
@@ -739,30 +851,30 @@ function FrameCard({ frameIdx, frame, active, namedPalettes, onClick, onPaletteC
         <span className="text-[var(--p8-light-grey)]">frame {frameIdx + 1}</span>
         <div className="flex items-center gap-1.5">
           <button onClick={e => { e.stopPropagation(); onDuplicate() }}
-            className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]"
+            className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]"
             title="Duplicate frame"
           >⧉</button>
           {canDelete && (
             <button onClick={e => { e.stopPropagation(); onDelete() }}
-              className="text-[var(--p8-dark-grey)] hover:text-[var(--p8-red)]"
+              className="text-[var(--p8-light-grey)] hover:text-[var(--p8-red)]"
             >×</button>
           )}
         </div>
       </div>
       <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-        <span className="text-[var(--p8-dark-grey)]">pal</span>
+        <span className="text-[var(--p8-light-grey)]">pal</span>
         <select
-          value={frame.palette ?? ''}
+          value={frame.paletteId ?? ''}
           onChange={e => onPaletteChange(e.target.value === '' ? undefined : parseInt(e.target.value))}
           className="bg-[#111] border-2 border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] px-1 w-24"
         >
           <option value="">default</option>
-          {namedPalettes.map((p, i) => <option key={i} value={i}>{p.name}</option>)}
+          {palettes.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <button onClick={onFlipToggle} title="Flip"
           className={`px-1 border-2 ${frame.flip
             ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
-            : 'border-[var(--p8-dark-grey)] text-[var(--p8-dark-grey)] hover:text-[var(--p8-light-grey)]'
+            : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]'
           }`}
         >↔</button>
       </div>
@@ -776,13 +888,14 @@ interface FilmstripFrameProps {
   h: number
   gfx: Uint8Array
   resolvedPalette: number[]
+  transparentColours: number[]
   mirror: boolean
   active: boolean
   zoom: number
   onClick: () => void
 }
 
-function FilmstripFrame({ frame, w, h, gfx, resolvedPalette, mirror, active, zoom, onClick }: FilmstripFrameProps) {
+function FilmstripFrame({ frame, w, h, gfx, resolvedPalette, transparentColours, mirror, active, zoom, onClick }: FilmstripFrameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const pw = w * TILE, ph = h * TILE
   const displayW = mirror ? pw * 2 : pw
@@ -791,15 +904,15 @@ function FilmstripFrame({ frame, w, h, gfx, resolvedPalette, mirror, active, zoo
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
-    renderFrame(ctx, frame, w, h, gfx, resolvedPalette, mirror)
-  }, [frame, w, h, gfx, resolvedPalette, mirror])
+    renderFrame(ctx, frame, w, h, gfx, resolvedPalette, mirror, transparentColours)
+  }, [frame, w, h, gfx, resolvedPalette, transparentColours, mirror])
 
   return (
     <canvas
       ref={canvasRef}
       width={displayW} height={ph}
       onClick={onClick}
-      className={`border-2 cursor-pointer ${active
+      className={`border-2 cursor-pointer bg-black ${active
         ? 'border-[var(--p8-yellow)]'
         : 'border-[var(--p8-dark-grey)] hover:border-[var(--p8-light-grey)]'
       }`}
@@ -814,10 +927,14 @@ function renderFrame(
   w: number, h: number,
   gfx: Uint8Array,
   resolvedPalette: number[],
-  mirror: boolean
+  mirror: boolean,
+  transparentColours: number[] = [],
+  highlightSlot: number | null = null,
+  blinkOn = false
 ) {
   const pw = w * TILE, ph = h * TILE
   const rgb = resolveRgb(resolvedPalette)
+  const transpMask = transparentColours.reduce((b, c) => b | (1 << c), 0)
 
   // Render tiles into a pw×ph buffer
   const tileData = new ImageData(pw, ph)
@@ -830,8 +947,15 @@ function renderFrame(
         for (let px = 0; px < TILE; px++) {
           const pixelIdx = gfx[(sprY + py) * 128 + (sprX + px)] & 0xf
           const i = ((ty * TILE + py) * pw + (tx * TILE + px)) * 4
-          const [r, g, b] = rgb[pixelIdx]
-          tileData.data[i] = r; tileData.data[i+1] = g; tileData.data[i+2] = b; tileData.data[i+3] = 255
+          if (transpMask & (1 << pixelIdx)) {
+            tileData.data[i+3] = 0
+          } else if (highlightSlot !== null && blinkOn && pixelIdx === highlightSlot) {
+            const [r, g, b] = rgb[pixelIdx]
+            tileData.data[i] = 255-r; tileData.data[i+1] = 255-g; tileData.data[i+2] = 255-b; tileData.data[i+3] = 255
+          } else {
+            const [r, g, b] = rgb[pixelIdx]
+            tileData.data[i] = r; tileData.data[i+1] = g; tileData.data[i+2] = b; tileData.data[i+3] = 255
+          }
         }
       }
     }
@@ -888,18 +1012,23 @@ function isContiguous(tiles: number[], w: number, h: number): boolean {
   return true
 }
 
-function rotatePaletteStr(drawPalette: number[], projectPalette: number[]): string {
+function paletteStr(drawPalette: number[], projectPalette: number[]): string {
   const colours = drawPalette.map(slot => projectPalette[slot])
+  // pal(split"...") is 0-indexed but split returns a 1-indexed Lua table;
+  // Pico-8 wraps t[0] to t[16], so colours[0] goes last.
   return [...colours.slice(1), colours[0]].join(',')
 }
 
 function generateAnimSnippet(
   anim: Animation,
-  namedPalettes: { name: string; drawPalette: number[]; transparentColours: number[] }[],
+  palettes: NamedPalette[],
   projectPalette: number[]
 ): string {
   const { frames, w, h } = anim
   if (frames.length === 0) return '-- no frames'
+
+  const findPalette = (f: AnimationFrame) =>
+    f.paletteId !== undefined ? palettes.find(p => p.id === f.paletteId) ?? null : null
 
   const allContiguous = frames.every(f => isContiguous(f.tiles, w, h))
   const lines: string[] = []
@@ -907,14 +1036,21 @@ function generateAnimSnippet(
   if (allContiguous) {
     for (let i = 0; i < frames.length; i++) {
       const frame = frames[i]
-      const np = frame.palette !== undefined ? namedPalettes[frame.palette] : null
-      if (np) lines.push(`pal(split"${rotatePaletteStr(np.drawPalette, projectPalette)}")  -- ${np.name}`)
+      const np = findPalette(frame)
+      if (np) {
+        lines.push(`pal(split"${paletteStr(np.drawPalette, projectPalette)}")  -- ${np.name}`)
+        const bitmask = np.transparentColours.reduce((b, c) => b | (1 << c), 0)
+        if (bitmask !== 1) lines.push(`palt(${bitmask})`)
+      }
       lines.push(`spr(${frame.tiles[0]}, x, y, ${w}, ${h})  -- frame ${i + 1}`)
-      if (np) lines.push('pal()')
+      if (np) lines.push('pal()\npalt()')
       if (i < frames.length - 1) lines.push('')
     }
   } else {
     const varName = anim.name.replace(/\s+/g, '_') + '_frames'
+    lines.push('-- reference implementation: raw tile indices per frame.')
+    lines.push('-- optimise for your cart as needed (e.g. fewer spr calls,')
+    lines.push('-- shared regions, etc.).')
     lines.push('function multi_spr(x, y, tiles, w, h)')
     lines.push('  local i=1')
     lines.push('  for ty=0,h-1 do')
@@ -927,17 +1063,20 @@ function generateAnimSnippet(
     lines.push('')
     lines.push(`local ${varName} = {`)
     for (let i = 0; i < frames.length; i++) {
-      const np = frames[i].palette !== undefined ? namedPalettes[frames[i].palette!] : null
+      const np = findPalette(frames[i])
       const comment = np ? `  -- frame ${i + 1} (${np.name})` : `  -- frame ${i + 1}`
-      lines.push(`  {${frames[i].tiles.join(', ')}},${comment}`)
+      lines.push(`  split"${frames[i].tiles.join(',')}",${comment}`)
     }
     lines.push('}')
-    const hasPalette = frames.some(f => f.palette !== undefined)
+    const hasPalette = frames.some(f => f.paletteId !== undefined)
     if (hasPalette) {
       lines.push('')
       for (let i = 0; i < frames.length; i++) {
-        const np = frames[i].palette !== undefined ? namedPalettes[frames[i].palette!] : null
-        if (np) lines.push(`-- frame ${i + 1}: pal(split"${rotatePaletteStr(np.drawPalette, projectPalette)}")`)
+        const np = findPalette(frames[i])
+        if (np) {
+          const bitmask = np.transparentColours.reduce((b, c) => b | (1 << c), 0)
+          lines.push(`-- frame ${i + 1}: pal(split"${paletteStr(np.drawPalette, projectPalette)}")${bitmask !== 1 ? ` palt(${bitmask})` : ''}`)
+        }
       }
     }
     lines.push('')

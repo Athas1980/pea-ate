@@ -86,7 +86,7 @@ export default function TilePicker({ gfx, drawPalette, brush, onBrushChange }: P
 
   return (
     <div>
-      <p className="text-[var(--p8-light-grey)] mb-1">tile picker</p>
+      <h2 className="text-[12px] text-[var(--p8-white)] mb-1">Tile Picker</h2>
       <canvas
         ref={canvasRef}
         width={CANVAS_W}

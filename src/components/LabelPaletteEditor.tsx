@@ -40,7 +40,7 @@ export default function LabelPaletteEditor({ label, labelPalette, onChange }: Pr
   const anyRemapped = Object.keys(labelPalette).length > 0
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {tooMany && (
         <div className="border-2 border-[var(--p8-red)] p-2 text-[var(--p8-red)] leading-relaxed">
           label has {uniqueValues.length} unique colour values (max 16).
@@ -48,60 +48,67 @@ export default function LabelPaletteEditor({ label, labelPalette, onChange }: Pr
         </div>
       )}
 
-      <div className="flex flex-col gap-1">
-        <span className="text-[var(--p8-light-grey)] mb-1">label colours</span>
-        <div className="flex gap-1 flex-wrap">
-          {displayValues.map(value => {
-            const mapped = (labelPalette[value] ?? value) & 0x1f
-            const remapped = labelPalette[value] !== undefined
-            const selected = selectedValue === value
-            return (
-              <button
-                key={value}
-                title={`index ${value} → ${mapped}`}
-                onClick={() => handleValueClick(value)}
-                onContextMenu={e => { e.preventDefault(); if (remapped) resetValue(value) }}
-                disabled={tooMany}
-                className="flex flex-col items-center gap-0.5 p-0"
-              >
-                <div
-                  className="w-6 h-6"
-                  style={{
-                    background: COLOR_TABLE_HEX[mapped],
-                    outline: selected ? '2px solid var(--p8-yellow)' : remapped ? '2px solid var(--p8-white)' : '2px solid transparent',
-                    outlineOffset: '1px',
-                  }}
-                />
-                {remapped && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--p8-yellow)]" />
-                )}
-              </button>
-            )
-          })}
+      <div className="flex flex-col gap-3 w-fit">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-[12px] text-[var(--p8-white)]">Label Colours</h2>
+          <div className="grid grid-cols-8 gap-px items-start">
+            {displayValues.map(value => {
+              const mapped = (labelPalette[value] ?? value) & 0x1f
+              const remapped = labelPalette[value] !== undefined
+              const selected = selectedValue === value
+              return (
+                <button
+                  key={value}
+                  title={`index ${value} → ${mapped}`}
+                  onClick={() => handleValueClick(value)}
+                  onContextMenu={e => { e.preventDefault(); if (remapped) resetValue(value) }}
+                  disabled={tooMany}
+                  className="flex flex-col items-center gap-0.5 p-0"
+                >
+                  <div
+                    className="w-6 h-6"
+                    style={{
+                      background: COLOR_TABLE_HEX[mapped],
+                      outline: selected ? '2px solid var(--p8-yellow)' : remapped ? '2px solid var(--p8-white)' : '2px solid transparent',
+                      outlineOffset: '1px',
+                    }}
+                  />
+                  {remapped && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--p8-yellow)]" />
+                  )}
+                </button>
+              )
+            })}
+            {Array.from({ length: 16 - displayValues.length }, (_, i) => (
+              <div key={`empty-${i}`} className="w-6 h-6 bg-black opacity-30" />
+            ))}
+          </div>
         </div>
-      </div>
 
-      {selectedValue !== null && (
-        <div className="flex flex-col gap-1 border-2 border-[var(--p8-dark-grey)] p-2 w-fit">
-          <span className="text-[var(--p8-light-grey)]">
-            index {selectedValue} → {(labelPalette[selectedValue] ?? selectedValue)}
-          </span>
-          <ColourRow
-            label="standard"
-            colours={STANDARD_PALETTE}
-            startIdx={0}
-            current={(labelPalette[selectedValue] ?? selectedValue)}
-            onSelect={handleTargetClick}
-          />
-          <ColourRow
-            label="secret"
-            colours={SECRET_PALETTE}
-            startIdx={16}
-            current={(labelPalette[selectedValue] ?? selectedValue)}
-            onSelect={handleTargetClick}
-          />
-        </div>
-      )}
+        {selectedValue !== null && (
+          <div className="flex flex-col gap-2 border-2 border-[var(--p8-dark-grey)] p-2 w-fit self-center">
+            <span className="text-[var(--p8-light-grey)]">
+              index {selectedValue} → {(labelPalette[selectedValue] ?? selectedValue)}
+            </span>
+            <div className="flex flex-col gap-2">
+              <ColourRow
+                label="standard"
+                colours={STANDARD_PALETTE}
+                startIdx={0}
+                current={(labelPalette[selectedValue] ?? selectedValue)}
+                onSelect={handleTargetClick}
+              />
+              <ColourRow
+                label="secret"
+                colours={SECRET_PALETTE}
+                startIdx={16}
+                current={(labelPalette[selectedValue] ?? selectedValue)}
+                onSelect={handleTargetClick}
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       {anyRemapped && !tooMany && (
         <button

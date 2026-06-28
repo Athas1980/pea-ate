@@ -1,5 +1,10 @@
 # pea-ate
 
+## Pending / deferred
+
+- **Manual named-palette editing** — the `PaletteEditor` component (hand-editing the active named palette's draw remaps + per-slot transparency) was removed after the identity-palette refactor left it orphaned (rendered nowhere; its App.tsx handlers fed nothing). Named palettes are still created/applied via `SpriteInspector` and managed in `AnimationView`, and the project/screen palette is edited via `ProjectPaletteEditor` — but there is currently no dedicated UI to hand-edit a named palette's colours/transparency. Also note the active named palette does **not** feed canvas rendering (canvases use `projectPalette` directly), so reviving manual editing is a deliberate feature, not just re-rendering the old component. Old component recoverable from git history (pre-removal).
+- **Custom element root tags** — change each component's root `<div>` to a kebab-case custom element matching the component name (e.g. `AnimationView` → `<animation-view>`). Purely for DevTools readability; no behaviour change. Requires a `src/custom-elements.d.ts` declaring each name in `JSX.IntrinsicElements`. Consider extracting top-level layout into `grid-template-areas` CSS at the same time, which would enable live layout tweaking in DevTools.
+
 A browser-only SPA for loading Pico-8 carts, viewing and editing the spritesheet and map, swapping palette colours, and inspecting sprites. No backend. Exports modified `.p8` files with palette metadata stored in a custom data block.
 
 **Design philosophy:** Not constrained to match Pico-8's built-in editor capabilities. Go beyond where it makes sense — features like random fill, custom map width, multi-tile brushes, and flood fill are valid even though the built-in editor doesn't have them.
@@ -19,7 +24,7 @@ A browser-only SPA for loading Pico-8 carts, viewing and editing the spritesheet
 src/
   components/       # UI components (SpritesheetView, MapView, PaletteEditor, etc.)
   lib/
-    p8/             # Pico-8 file format parsing, serialisation, and .p8.png decode
+    p8/             # Pico-8 .p8 file format parsing and serialisation
   hooks/            # Custom React hooks
   types/            # Shared TypeScript types
 ```
@@ -60,9 +65,11 @@ src/
    - **TODO: layout robustness** — map view has issues at half-screen width. Test and fix layout under different viewport sizes and zoom levels (known case: 4K display at 200% system scaling causes map view problems at reduced window width).
    - **TODO: copy/paste block** — select a rectangular region of the map, copy it, paste it elsewhere. Stamp the copied block over any target position.
    - **Code snippets** — `CodeSnippet` component with Prism.js Lua highlighting (including Pico-8 built-ins), navy background, click-to-copy. Used for poke snippet, palette Lua exports, and named palette exports. Project palette uses `pal(c, n, 1)` format; draw palette uses `pal(c, n)` format.
-10. **Drag & drop `.p8.png`** — implemented in `src/lib/p8/stego.ts`. See `.p8.png format` section below for the encoding spec. Lua code is not decompressed (not needed for palette tool). Label is recovered from visual pixels by nearest-colour matching.
+10. **Drag & drop `.p8.png`** — **REMOVED from the UI.** It was implemented (`src/lib/p8/stego.ts`) and the PNG decode itself was made bit-exact (canvas-free: parse + `DecompressionStream` inflate + unfilter — gfx/map/label recovered perfectly). But a `.p8.png` → `.p8` export is **not faithful**: the cart's `__sfx__`/`__music__`/`__gff__` (sprite flags) are dropped, and the Lua code's P8SCII high bytes aren't re-encoded the way Pico-8's `.p8` does (Pico-8 writes `.p8` as UTF-8 with P8SCII glyphs as multi-byte sequences; our decode produced raw latin1 bytes). The result *looked* like it worked while silently corrupting carts — the worst failure mode — so the import path was withdrawn. pea-ate is a `.p8` tool; `.p8.png` was a stretch goal. Users who need it should round-trip through Pico-8 (load `.p8.png`, save `.p8`). The decoder is recoverable from the `feat(p8.png): bit-exact canvas-free PNG decoder` commit. Format spec retained below for reference if revived; a faithful revival needs a P8SCII→Unicode table and binary→`.p8`-text serialisers for sfx/music/gff (validate against a Pico-8-saved `.p8`).
 
 ## `.p8.png` format
+
+*(Reference for the withdrawn `.p8.png` import — see feature #10. Kept in case it's revived.)*
 
 Pico-8 carts can be saved as steganographic PNGs (160×205 pixels).
 
@@ -190,6 +197,60 @@ For secret palette access: `pal(c, 128+n)` remaps draw colour c to secret colour
 - Yellow dot indicator on remapped slots
 - Right-click a remapped slot to reset just that slot
 - "Reset all" button appears when any slot is remapped
+
+## UI design language
+
+### Colours (CSS variables)
+- **`--p8-white`** — section headings, active/selected element labels
+- **`--p8-light-grey`** — secondary text, inactive button labels, functional UI labels
+- **`--p8-lavender`** — decorative/status text (fps readout, frame counter, drag hints)
+- **`--p8-dark-grey`** — borders, dividers
+- **`--p8-yellow`** — active state for toggles/selectors; selected outline on swatches
+- **`--p8-green`** — confirm/apply actions (save, use palette on frame, apply resize)
+- **`--p8-red`** — destructive hover state (delete, reset all, ×)
+
+### Section headings
+All section headers use `<h2 className="text-[12px] text-[var(--p8-white)]">`. No larger heading sizes in the UI chrome.
+
+### Button hierarchy
+**Bordered** — primary actions, mode toggles, and any action button that sits alongside other bordered controls:
+```
+px-2 py-0.5 border-2 border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)]
+  hover:border-[var(--p8-white)] hover:text-[var(--p8-white)]
+```
+- Active/on state: `border-[var(--p8-yellow)] text-[var(--p8-yellow)]`
+- Destructive hover: `hover:border-[var(--p8-red)] hover:text-[var(--p8-red)]`
+- Confirm hover: `hover:border-[var(--p8-green)] hover:text-[var(--p8-green)]`
+
+**Bare text** — secondary/housekeeping actions (+ add frame, + clone as new, ⧉, ×):
+```
+text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]
+```
+- Destructive bare: `hover:text-[var(--p8-red)]`
+
+### Segmented controls
+Binary named-state toggles (e.g. opaque/transparent) use a shared-border pair. Active: yellow border + text. Inactive: dark-grey border + light-grey text. The shared edge between the two buttons is always yellow — give the inactive left button `border-r-[var(--p8-yellow)]`.
+
+### Transparency indicator
+Transparent palette slots show a dual-tint checkerboard overlay (visible on both dark and bright colours):
+```jsx
+backgroundImage: 'linear-gradient(45deg, rgba(0,0,0,0.3) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.3) 75%), linear-gradient(45deg, rgba(0,0,0,0.3) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.3) 75%)',
+backgroundColor: 'rgba(255,255,255,0.2)',
+backgroundSize: '6px 6px',
+backgroundPosition: '0 0, 3px 3px',
+```
+
+### Palette boxes
+Draw palette + slot picker share one `border-2 border-[var(--p8-dark-grey)]` container. The picker opens below with a `border-t-2` divider — it shares the outer border rather than nesting a second box.
+
+### Layout
+- Spritesheet, Label, and Animation tab wrappers use `max-w-5xl`. Map is unconstrained — dense data benefits from full width.
+- Bordered component boxes (frame cards, Props panel) use `bg-black`.
+
+### Press Start 2P in scrollable flex lists
+In `flex flex-col` containers with `overflow-y-auto` + `max-h-*`, list items need two things:
+- `shrink-0` — without it, flex compresses items to fit the container instead of scrolling
+- `leading-none` — clamps line-height to font-size; the font's vertical metrics otherwise bleed into adjacent rows
 
 ## Canvas rendering
 
