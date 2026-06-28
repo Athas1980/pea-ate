@@ -315,16 +315,17 @@ export default function App() {
       </main>
 
       {/* Footer status bar */}
-      {cart && (
-        <footer className="bg-[var(--p8-red)] px-4 py-1.5 flex items-center gap-6 shrink-0">
-          <span className="text-[var(--p8-white)] opacity-75">{filename}</span>
-          {tab === 'map' && hoverMapTile !== null && (
-            <span className="text-[var(--p8-white)] text-xs font-mono">
-              {hoverMapTile.tx},{hoverMapTile.ty} · sprite {hoverMapTile.tileIdx}
-            </span>
-          )}
-        </footer>
-      )}
+      <footer className="bg-[var(--p8-red)] px-4 py-1.5 flex items-center gap-6 shrink-0">
+        {cart && <span className="text-[var(--p8-white)] opacity-75">{filename}</span>}
+        {cart && tab === 'map' && hoverMapTile !== null && (
+          <span className="text-[var(--p8-white)] text-xs font-mono">
+            {hoverMapTile.tx},{hoverMapTile.ty} · sprite {hoverMapTile.tileIdx}
+          </span>
+        )}
+        <span className="ml-auto text-[var(--p8-lavender)] text-[10px] leading-none">
+          v{__APP_VERSION__}{import.meta.env.DEV ? '-dev' : ''}
+        </span>
+      </footer>
 
     </div>
   )

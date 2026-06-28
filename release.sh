@@ -19,6 +19,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
+echo "==> Bumping package.json to ${VERSION#v}..."
+npm version "${VERSION#v}" --no-git-tag-version
+git commit -am "Bump version to $VERSION"
+git push origin develop
+
 echo "==> Building..."
 npm run build
 
