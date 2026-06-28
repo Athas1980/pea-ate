@@ -19,21 +19,126 @@ const COLOR_TABLE: Rgb[] = [
   ...SECRET_PALETTE.map(hexToRgb),
 ]
 
+export interface RgbaImage {
+  width: number
+  height: number
+  data: Uint8Array
+}
+
+/** Browser entry point: read a `.p8.png` File and decode it to a Cart. */
 export async function decodePngCart(file: File): Promise<Cart> {
-  const bitmap = await createImageBitmap(file)
-  const canvas = document.createElement('canvas')
-  canvas.width = bitmap.width
-  canvas.height = bitmap.height
-  const ctx = canvas.getContext('2d')!
-  ctx.drawImage(bitmap, 0, 0)
-  bitmap.close()
+  return decodeP8Png(new Uint8Array(await file.arrayBuffer()))
+}
 
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  const bytes = extractBytes(imageData)
+/**
+ * Decodes the raw bytes of a `.p8.png` to a Cart. Pure (no DOM/canvas), so the
+ * whole load pipeline is testable in node against a real `.p8.png`.
+ *
+ * We decode the PNG ourselves rather than via `createImageBitmap` + canvas
+ * `getImageData`: the payload lives in the 2 LSBs of every channel, and a canvas
+ * round-trip premultiplies/un-premultiplies alpha (most cart pixels have alpha
+ * < 255), silently corrupting those bits -- invisibly for sprites, fatally for
+ * the bit-exact compressed code.
+ */
+export async function decodeP8Png(pngBytes: Uint8Array): Promise<Cart> {
+  const image = await decodePng(pngBytes)
+  const bytes = extractBytes(image)
   const { gfx, map, lua } = decodeCartBytes(bytes)
-  const label = extractLabel(imageData)
-
+  const label = extractLabel(image)
   return { version: 0, lua, gfx, map, sfx: '', music: '', label, paletteToolData: undefined }
+}
+
+/**
+ * Minimal PNG decoder for the one format Pico-8 writes: 8-bit RGBA, non-
+ * interlaced. Parses chunks, inflates the IDAT stream (zlib, via the platform
+ * `DecompressionStream`), and reverses the per-scanline filters. Returns exact
+ * pixel bytes -- no canvas, no colour management, no alpha premultiplication.
+ */
+async function decodePng(bytes: Uint8Array): Promise<RgbaImage> {
+  const SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+  for (let i = 0; i < 8; i++) {
+    if (bytes[i] !== SIG[i]) throw new Error('not a PNG file')
+  }
+
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  let pos = 8
+  let width = 0, height = 0, bitDepth = 0, colorType = 0, interlace = 0
+  const idat: Uint8Array[] = []
+  while (pos + 8 <= bytes.length) {
+    const len = dv.getUint32(pos); pos += 4
+    const type = String.fromCharCode(bytes[pos], bytes[pos + 1], bytes[pos + 2], bytes[pos + 3])
+    pos += 4
+    if (type === 'IHDR') {
+      width = dv.getUint32(pos)
+      height = dv.getUint32(pos + 4)
+      bitDepth = bytes[pos + 8]
+      colorType = bytes[pos + 9]
+      interlace = bytes[pos + 12]
+    } else if (type === 'IDAT') {
+      idat.push(bytes.subarray(pos, pos + len))
+    } else if (type === 'IEND') {
+      break
+    }
+    pos += len + 4 // chunk data + CRC
+  }
+
+  if (bitDepth !== 8 || colorType !== 6 || interlace !== 0) {
+    throw new Error(
+      `unsupported PNG (bitDepth=${bitDepth}, colorType=${colorType}, interlace=${interlace}); expected 8-bit RGBA, non-interlaced`,
+    )
+  }
+
+  let total = 0
+  for (const chunk of idat) total += chunk.length
+  const compressed = new Uint8Array(total)
+  let off = 0
+  for (const chunk of idat) { compressed.set(chunk, off); off += chunk.length }
+
+  const raw = await inflate(compressed)
+  return { width, height, data: unfilter(raw, width, height) }
+}
+
+async function inflate(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array> {
+  const stream = new Response(data).body!.pipeThrough(new DecompressionStream('deflate'))
+  return new Uint8Array(await new Response(stream).arrayBuffer())
+}
+
+/** Reverses PNG per-scanline filtering for 8-bit RGBA (4 bytes/pixel). */
+function unfilter(raw: Uint8Array, width: number, height: number): Uint8Array {
+  const bpp = 4
+  const stride = width * bpp
+  const out = new Uint8Array(width * height * bpp)
+  let ip = 0
+  for (let y = 0; y < height; y++) {
+    const filter = raw[ip++]
+    const rowStart = y * stride
+    const prevStart = rowStart - stride
+    for (let x = 0; x < stride; x++) {
+      const rawByte = raw[ip++]
+      const left = x >= bpp ? out[rowStart + x - bpp] : 0
+      const up = y > 0 ? out[prevStart + x] : 0
+      const upLeft = y > 0 && x >= bpp ? out[prevStart + x - bpp] : 0
+      let value: number
+      switch (filter) {
+        case 0: value = rawByte; break
+        case 1: value = rawByte + left; break
+        case 2: value = rawByte + up; break
+        case 3: value = rawByte + ((left + up) >> 1); break
+        case 4: value = rawByte + paeth(left, up, upLeft); break
+        default: throw new Error(`unsupported PNG filter ${filter}`)
+      }
+      out[rowStart + x] = value & 0xff
+    }
+  }
+  return out
+}
+
+function paeth(a: number, b: number, c: number): number {
+  const p = a + b - c
+  const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c)
+  if (pa <= pb && pa <= pc) return a
+  if (pb <= pc) return b
+  return c
 }
 
 /**
@@ -189,7 +294,7 @@ function bytesToString(codes: number[]): string {
   return s
 }
 
-function extractBytes({ data, width, height }: ImageData): Uint8Array {
+function extractBytes({ data, width, height }: RgbaImage): Uint8Array {
   const bytes = new Uint8Array(width * height)
   for (let i = 0; i < width * height; i++) {
     const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2], a = data[i * 4 + 3]
@@ -231,7 +336,7 @@ function extractMap(bytes: Uint8Array, gfx: Uint8Array): Uint8Array {
   return map
 }
 
-function extractLabel({ data, width }: ImageData): Uint8Array {
+function extractLabel({ data, width }: RgbaImage): Uint8Array {
   const label = new Uint8Array(128 * 128)
   for (let row = 0; row < 128; row++) {
     for (let col = 0; col < 128; col++) {
