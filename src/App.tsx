@@ -7,7 +7,7 @@ import SpritesheetView from './components/SpritesheetView'
 import MapView from './components/MapView'
 import TilePicker from './components/TilePicker'
 import CartOptions from './components/CartOptions'
-import LabelView from './components/LabelView'
+import LabelView, { labelToDataURL } from './components/LabelView'
 import LabelPaletteEditor from './components/LabelPaletteEditor'
 import AnimationView from './components/AnimationView'
 import HelpView from './components/HelpView'
@@ -315,16 +315,17 @@ export default function App() {
       </main>
 
       {/* Footer status bar */}
-      {cart && (
-        <footer className="bg-[var(--p8-red)] px-4 py-1.5 flex items-center gap-6 shrink-0">
-          <span className="text-[var(--p8-white)] opacity-75">{filename}</span>
-          {tab === 'map' && hoverMapTile !== null && (
-            <span className="text-[var(--p8-white)] text-xs font-mono">
-              {hoverMapTile.tx},{hoverMapTile.ty} · sprite {hoverMapTile.tileIdx}
-            </span>
-          )}
-        </footer>
-      )}
+      <footer className="bg-[var(--p8-red)] px-4 py-1.5 flex items-center gap-6 shrink-0">
+        {cart && <span className="text-[var(--p8-white)] opacity-75">{filename}</span>}
+        {cart && tab === 'map' && hoverMapTile !== null && (
+          <span className="text-[var(--p8-white)] text-xs font-mono">
+            {hoverMapTile.tx},{hoverMapTile.ty} · sprite {hoverMapTile.tileIdx}
+          </span>
+        )}
+        <span className="ml-auto text-[var(--p8-lavender)] text-[10px] leading-none">
+          v{__APP_VERSION__}{import.meta.env.DEV ? '-dev' : ''}
+        </span>
+      </footer>
 
     </div>
   )
@@ -340,7 +341,24 @@ const SUGGEST_URL = 'https://github.com/Athas1980/pea-ate/issues/new?labels=samp
 function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }) {
   const [dragging, setDragging] = useState(false)
   const [loadingFile, setLoadingFile] = useState<string | null>(null)
+  const [thumbs, setThumbs] = useState<Record<string, string>>({})
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Render each sample cart's label as a cover-art thumbnail (key present but
+  // empty string = fetched/parsed but no label section).
+  useEffect(() => {
+    let cancelled = false
+    Promise.all(SAMPLES.map(async s => {
+      try {
+        const cart = parseP8(await (await fetch(`/carts/${s.file}`)).text())
+        if (cart.label) return [s.file, labelToDataURL(cart.label)] as const
+      } catch { /* leave without a thumbnail */ }
+      return [s.file, ''] as const
+    })).then(entries => {
+      if (!cancelled) setThumbs(Object.fromEntries(entries))
+    })
+    return () => { cancelled = true }
+  }, [])
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
@@ -371,54 +389,87 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
       onDragOver={e => { e.preventDefault(); setDragging(true) }}
       onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}
-      className={`flex flex-col items-center justify-center border-2 border-dashed p-16 min-h-full transition-colors ${
-        dragging
-          ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
-          : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)]'
-      }`}
+      className="flex flex-col items-center justify-center gap-10 min-h-full p-8"
     >
-      <p className="mb-4">drop a .p8 file here</p>
+      {/* hero */}
+      <div className="flex flex-col items-center">
+        <h1 className="text-[12px] text-[var(--p8-white)] mb-3">a Pico-8 cart editor</h1>
+        <p className="text-[10px] text-[var(--p8-light-grey)] leading-relaxed text-center max-w-md">
+          edit the spritesheet, map and palettes of a .p8 cart, then export a modified .p8
+        </p>
+      </div>
+
+      {/* drop target — the whole box is a click-to-browse control */}
       <button
+        type="button"
         onClick={() => inputRef.current?.click()}
-        className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] mb-6"
+        className={`flex flex-col items-center gap-3 border-2 border-dashed px-14 py-10 cursor-pointer transition-colors ${
+          dragging
+            ? 'border-[var(--p8-yellow)] text-[var(--p8-yellow)]'
+            : 'border-[var(--p8-light-grey)] text-[var(--p8-light-grey)] hover:border-[var(--p8-white)] hover:text-[var(--p8-white)]'
+        }`}
       >
-        or click to browse
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+          <path d="M12 3v10" />
+          <path d="M8 9l4 4 4-4" />
+          <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+        </svg>
+        <span className="text-[12px]">drop a .p8 file here</span>
+        <span className="text-[10px] opacity-70">or click to browse</span>
       </button>
-      <div className="flex flex-col items-center gap-2">
-        {SAMPLES.map(s => (
-          <div key={s.file} className="flex items-center gap-2">
-            <button
-              onClick={() => loadSample(s.file)}
-              disabled={loadingFile !== null}
-              className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] disabled:text-[var(--p8-lavender)]"
-            >
-              {loadingFile === s.file ? 'loading...' : s.label}
-            </button>
-            <span className="text-[var(--p8-lavender)]">by {s.author}</span>
-            {s.url && (
-              <a
-                href={s.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]"
-                title="View source"
+
+      {/* sample carts */}
+      <div className="flex flex-col items-center gap-4">
+        <span className="text-[10px] text-[var(--p8-lavender)]">or try a sample</span>
+        <div className="flex items-start gap-6">
+          {SAMPLES.map(s => (
+            <div key={s.file} className="flex flex-col items-center gap-2 w-32">
+              <button
+                onClick={() => loadSample(s.file)}
+                disabled={loadingFile !== null}
+                title={`Load ${s.label}`}
+                className="border-2 border-[var(--p8-dark-grey)] hover:border-[var(--p8-white)] disabled:opacity-50 transition-colors"
               >
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                  <path d="M3 1h6v6M9 1L1 9" />
-                </svg>
-              </a>
-            )}
-          </div>
-        ))}
+                {thumbs[s.file]
+                  ? <img src={thumbs[s.file]} alt={`${s.label} label`} width={128} height={128} style={{ imageRendering: 'pixelated' }} className="block w-32 h-32" />
+                  : <div className="w-32 h-32 bg-black flex items-center justify-center text-[10px] text-[var(--p8-dark-grey)]">{s.file in thumbs ? 'no label' : '...'}</div>}
+              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => loadSample(s.file)}
+                  disabled={loadingFile !== null}
+                  className="text-[10px] text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] disabled:text-[var(--p8-lavender)] leading-none text-center"
+                >
+                  {loadingFile === s.file ? 'loading...' : s.label}
+                </button>
+                {s.url && (
+                  <a
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 text-[var(--p8-light-grey)] hover:text-[var(--p8-white)]"
+                    title="View source"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                      <path d="M3 1h6v6M9 1L1 9" />
+                    </svg>
+                  </a>
+                )}
+              </div>
+              <span className="text-[10px] text-[var(--p8-lavender)] leading-none">by {s.author}</span>
+            </div>
+          ))}
+        </div>
         <a
           href={SUGGEST_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] mt-2"
+          className="text-[10px] text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] mt-1"
         >
           + suggest a sample cart
         </a>
       </div>
+
       <input
         ref={inputRef}
         type="file"
