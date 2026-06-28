@@ -28,7 +28,7 @@ function makeP8(overrides: Record<string, string> = {}) {
 }
 
 const IDENTITY_TOOL_DATA: PaletteToolData = {
-  drawPalette: Array.from({ length: 16 }, (_, i) => i),
+  projectPalette: Array.from({ length: 16 }, (_, i) => i),
   useSharedMap: true,
   showZeroTile: false,
   labelPalette: {},
@@ -135,26 +135,26 @@ describe('parse → serialise → parse round-trip', () => {
   it('stores tool data in __pico8_palette_tool__ section', () => {
     const cart = parseP8(makeP8())
     const toolData: PaletteToolData = {
-      drawPalette: [7, 1, 2, 3, 4, 5, 6, 0, 8, 9, 10, 11, 12, 13, 14, 15],
+      projectPalette: [7, 1, 2, 3, 4, 5, 6, 0, 8, 9, 10, 11, 12, 13, 14, 15],
       useSharedMap: false,
       showZeroTile: true,
       labelPalette: {},
     }
     const reparsed = parseP8(serialiseP8(cart, toolData))
-    expect(reparsed.paletteToolData?.drawPalette[0]).toBe(7)
+    expect(reparsed.paletteToolData?.projectPalette?.[0]).toBe(7)
     expect(reparsed.paletteToolData?.useSharedMap).toBe(false)
     expect(reparsed.paletteToolData?.showZeroTile).toBe(true)
   })
 
-  it('restores drawPalette on second load', () => {
+  it('restores projectPalette on second load', () => {
     const cart = parseP8(makeP8())
     const toolData: PaletteToolData = {
       ...IDENTITY_TOOL_DATA,
-      drawPalette: [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+      projectPalette: [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
     }
     const exported = serialiseP8(cart, toolData)
     const reparsed = parseP8(exported)
-    expect(reparsed.paletteToolData?.drawPalette).toEqual(toolData.drawPalette)
+    expect(reparsed.paletteToolData?.projectPalette).toEqual(toolData.projectPalette)
   })
 })
 

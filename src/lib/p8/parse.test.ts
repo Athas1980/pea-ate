@@ -145,7 +145,7 @@ describe('paletteToolData', () => {
 
   it('restores stored tool data', () => {
     const toolData = {
-      drawPalette: Array.from({ length: 16 }, (_, i) => i),
+      projectPalette: Array.from({ length: 16 }, (_, i) => i),
       useSharedMap: false,
       showZeroTile: true,
       labelPalette: { '3': 7 },
@@ -153,7 +153,7 @@ describe('paletteToolData', () => {
     const cart = parseP8(makeCart({
       '__pico8_palette_tool__': JSON.stringify(toolData),
     }))
-    expect(cart.paletteToolData?.drawPalette[0]).toBe(0)
+    expect(cart.paletteToolData?.projectPalette?.[0]).toBe(0)
     expect(cart.paletteToolData?.useSharedMap).toBe(false)
     expect(cart.paletteToolData?.showZeroTile).toBe(true)
   })
