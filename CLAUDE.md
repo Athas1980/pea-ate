@@ -65,7 +65,7 @@ src/
    - **TODO: layout robustness** — map view has issues at half-screen width. Test and fix layout under different viewport sizes and zoom levels (known case: 4K display at 200% system scaling causes map view problems at reduced window width).
    - **TODO: copy/paste block** — select a rectangular region of the map, copy it, paste it elsewhere. Stamp the copied block over any target position.
    - **Code snippets** — `CodeSnippet` component with Prism.js Lua highlighting (including Pico-8 built-ins), navy background, click-to-copy. Used for poke snippet, palette Lua exports, and named palette exports. Project palette uses `pal(c, n, 1)` format; draw palette uses `pal(c, n)` format.
-10. **Drag & drop `.p8.png`** — implemented in `src/lib/p8/stego.ts`. See `.p8.png format` section below for the encoding spec. Lua code is not decompressed (not needed for palette tool). Label is recovered from visual pixels by nearest-colour matching.
+10. **Drag & drop `.p8.png`** — implemented in `src/lib/p8/stego.ts`. See `.p8.png format` section below for the encoding spec. Lua code is decompressed by `decodeCode()` so it survives a `.p8.png` → `.p8` export — handles the new PXA bitstream (`\0pxa`), the legacy `:c:\0` byte format, and uncompressed null-terminated text. Size fields are big-endian; the PXA bitstream reads LSB-first within each byte. Verified byte-for-byte against shrinko8's decoder (see `stego.test.ts`, real-cart fixture). Note: P8SCII high bytes are carried as latin1 char codes, same as the `.p8` text path. Label is recovered from visual pixels by nearest-colour matching.
 
 ## `.p8.png` format
 
