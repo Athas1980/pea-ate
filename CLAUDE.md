@@ -24,7 +24,7 @@ A browser-only SPA for loading Pico-8 carts, viewing and editing the spritesheet
 src/
   components/       # UI components (SpritesheetView, MapView, PaletteEditor, etc.)
   lib/
-    p8/             # Pico-8 file format parsing, serialisation, and .p8.png decode
+    p8/             # Pico-8 .p8 file format parsing and serialisation
   hooks/            # Custom React hooks
   types/            # Shared TypeScript types
 ```
@@ -65,9 +65,11 @@ src/
    - **TODO: layout robustness** — map view has issues at half-screen width. Test and fix layout under different viewport sizes and zoom levels (known case: 4K display at 200% system scaling causes map view problems at reduced window width).
    - **TODO: copy/paste block** — select a rectangular region of the map, copy it, paste it elsewhere. Stamp the copied block over any target position.
    - **Code snippets** — `CodeSnippet` component with Prism.js Lua highlighting (including Pico-8 built-ins), navy background, click-to-copy. Used for poke snippet, palette Lua exports, and named palette exports. Project palette uses `pal(c, n, 1)` format; draw palette uses `pal(c, n)` format.
-10. **Drag & drop `.p8.png`** — implemented in `src/lib/p8/stego.ts`. See `.p8.png format` section below for the encoding spec. Lua code is decompressed by `decodeCode()` so it survives a `.p8.png` → `.p8` export — handles the new PXA bitstream (`\0pxa`), the legacy `:c:\0` byte format, and uncompressed null-terminated text. Size fields are big-endian; the PXA bitstream reads LSB-first within each byte. Verified byte-for-byte against shrinko8's decoder (see `stego.test.ts`, real-cart fixture). Note: P8SCII high bytes are carried as latin1 char codes, same as the `.p8` text path. Label is recovered from visual pixels by nearest-colour matching.
+10. **Drag & drop `.p8.png`** — **REMOVED from the UI.** It was implemented (`src/lib/p8/stego.ts`) and the PNG decode itself was made bit-exact (canvas-free: parse + `DecompressionStream` inflate + unfilter — gfx/map/label recovered perfectly). But a `.p8.png` → `.p8` export is **not faithful**: the cart's `__sfx__`/`__music__`/`__gff__` (sprite flags) are dropped, and the Lua code's P8SCII high bytes aren't re-encoded the way Pico-8's `.p8` does (Pico-8 writes `.p8` as UTF-8 with P8SCII glyphs as multi-byte sequences; our decode produced raw latin1 bytes). The result *looked* like it worked while silently corrupting carts — the worst failure mode — so the import path was withdrawn. pea-ate is a `.p8` tool; `.p8.png` was a stretch goal. Users who need it should round-trip through Pico-8 (load `.p8.png`, save `.p8`). The decoder is recoverable from the `feat(p8.png): bit-exact canvas-free PNG decoder` commit. Format spec retained below for reference if revived; a faithful revival needs a P8SCII→Unicode table and binary→`.p8`-text serialisers for sfx/music/gff (validate against a Pico-8-saved `.p8`).
 
 ## `.p8.png` format
+
+*(Reference for the withdrawn `.p8.png` import — see feature #10. Kept in case it's revived.)*
 
 Pico-8 carts can be saved as steganographic PNGs (160×205 pixels).
 

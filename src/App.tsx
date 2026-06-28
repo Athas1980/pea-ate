@@ -3,7 +3,6 @@ import type { Cart, PaletteToolData, TileBrush, MapToolState, Animation, NamedPa
 import { STANDARD_PALETTE, SECRET_PALETTE } from './types/cart'
 import { parseP8 } from './lib/p8/parse'
 import { serialiseP8 } from './lib/p8/export'
-import { decodePngCart } from './lib/p8/stego'
 import SpritesheetView from './components/SpritesheetView'
 import MapView from './components/MapView'
 import TilePicker from './components/TilePicker'
@@ -378,7 +377,7 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
           : 'border-[var(--p8-dark-grey)] text-[var(--p8-light-grey)]'
       }`}
     >
-      <p className="mb-4">drop a .p8 or .p8.png file here</p>
+      <p className="mb-4">drop a .p8 file here</p>
       <button
         onClick={() => inputRef.current?.click()}
         className="text-[var(--p8-light-grey)] hover:text-[var(--p8-white)] mb-6"
@@ -423,7 +422,7 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
       <input
         ref={inputRef}
         type="file"
-        accept=".p8,.png"
+        accept=".p8"
         className="hidden"
         onChange={handleFileInput}
       />
@@ -432,10 +431,6 @@ function DropZone({ onLoad }: { onLoad: (cart: Cart, filename: string) => void }
 }
 
 function readFile(file: File, onLoad: (cart: Cart, filename: string) => void) {
-  if (file.name.endsWith('.p8.png')) {
-    decodePngCart(file).then(cart => onLoad(cart, file.name.replace(/\.png$/, '')))
-    return
-  }
   const reader = new FileReader()
   reader.onload = e => {
     const text = e.target?.result
